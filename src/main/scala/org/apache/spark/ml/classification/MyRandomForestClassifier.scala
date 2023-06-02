@@ -41,11 +41,12 @@ import org.apache.spark.sql.functions._
  * classification.
  * It supports both binary and multiclass labels, as well as both continuous and categorical
  * features.
+ * MyRandomForestClassifier 是基于spark官方ml包下的 RandomForestClassifier 修改的
  */
 @Since("1.4.0")
-class RandomForestClassifier @Since("1.4.0") (
+class MyRandomForestClassifier @Since("1.4.0") (
                                                @Since("1.4.0") override val uid: String)
-  extends ProbabilisticClassifier[Vector, RandomForestClassifier, RandomForestClassificationModel]
+  extends ProbabilisticClassifier[Vector, MyRandomForestClassifier, RandomForestClassificationModel]
     with RandomForestClassifierParams with DefaultParamsWritable {
 
   @Since("1.4.0")
@@ -149,11 +150,11 @@ class RandomForestClassifier @Since("1.4.0") (
   }
 
   @Since("1.4.1")
-  override def copy(extra: ParamMap): RandomForestClassifier = defaultCopy(extra)
+  override def copy(extra: ParamMap): MyRandomForestClassifier = defaultCopy(extra)
 }
 
 @Since("1.4.0")
-object RandomForestClassifier extends DefaultParamsReadable[RandomForestClassifier] {
+object MyRandomForestClassifier extends DefaultParamsReadable[MyRandomForestClassifier] {
   /** Accessor for supported impurity settings: entropy, gini */
   @Since("1.4.0")
   final val supportedImpurities: Array[String] = TreeClassifierParams.supportedImpurities
@@ -164,7 +165,7 @@ object RandomForestClassifier extends DefaultParamsReadable[RandomForestClassifi
   TreeEnsembleParams.supportedFeatureSubsetStrategies
 
   @Since("2.0.0")
-  override def load(path: String): RandomForestClassifier = super.load(path)
+  override def load(path: String): MyRandomForestClassifier = super.load(path)
 }
 
 /**
@@ -337,7 +338,7 @@ object RandomForestClassificationModel extends MLReadable[RandomForestClassifica
   /** Convert a model from the old API */
   private[ml] def fromOld(
                            oldModel: OldRandomForestModel,
-                           parent: RandomForestClassifier,
+                           parent: MyRandomForestClassifier,
                            categoricalFeatures: Map[Int, Int],
                            numClasses: Int,
                            numFeatures: Int = -1): RandomForestClassificationModel = {

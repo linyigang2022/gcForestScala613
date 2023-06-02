@@ -28,14 +28,18 @@ import org.apache.spark.sql.SparkSession
 
 object RandomForestClassifierExample {
   def main(args: Array[String]): Unit = {
+//    val s:Array[Int] = Array(1.9, 2.9, 3.4, 3.5)
     val spark = SparkSession
       .builder
       .appName("RandomForestClassifierExample")
+      .config("spark.master", "local")
       .getOrCreate()
 
     // $example on$
     // Load and parse the data file, converting it to a DataFrame.
-    val data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+//    val data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+    val data = spark.read.format("libsvm").load("/user/aogengyuan/linyigang/data/mllib/sample_libsvm_data.txt")
+//    val data = spark.read.format("libsvm").load("/user/linyigang/data/mllib/sample_libsvm_data.txt")
 
     // Index labels, adding metadata to the label column.
     // Fit on whole dataset to include all labels in index.
