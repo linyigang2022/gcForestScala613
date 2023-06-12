@@ -90,65 +90,6 @@ private[spark] object GCForestImpl extends Logging {
 
   }
 
-  /**
-    * Scan image-style data
-    * @param dataset raw input features
-    * @param windowWidth the width of window
-    * @param windowHeight the height of window
-    * @return
-    */
-  def extractMatrixRDD(dataset: Dataset[_],
-                       windowWidth: Int,
-                       windowHeight: Int,
-                       dataSize: Array[Int],
-                       featuresCol: String,
-                       winCol: String): DataFrame = {
-    require(dataSize.length == 2, "You must set Image resolution by setDataSize")
-    val sparkSession = dataset.sparkSession
-    val schema = dataset.schema
-
-    val width = dataSize(0)  // 10
-    val height = dataSize(1)  // 10
-
-    require(width >= windowWidth, "The width of image must be greater than window's")
-    require(height >= windowHeight, "The height of image must be greater than window's")
-
-    val vector2Matrix = udf { (features: Vector, w: Int, h: Int) =>
-      new DenseMatrix(w, h, features.toArray)
-    }
-
-    val windowInstances = dataset.withColumn(featuresCol,
-      vector2Matrix(col(featuresCol), lit(width), lit(height)))
-      .rdd.flatMap { row =>
-      val rows = Array.fill[Row]((width - windowWidth + 1) * (height - windowHeight + 1))(null)
-      val featureIdx = row.fieldIndex(featuresCol)
-      val matrix = row.getAs[DenseMatrix](featuresCol)
-      val features = Array.fill[Double](windowWidth * windowHeight)(0d)
-      val newRow = ArrayBuffer[Any]() ++= row.toSeq
-      val windowNumIdx = newRow.length
-      newRow += 0
-
-      Range(0, width - windowWidth + 1).foreach { x_offset =>
-        Range(0, height - windowHeight + 1).foreach { y_offset =>
-          Range(0, windowWidth).foreach { x =>
-            Range(0, windowHeight).foreach { y =>
-              features(x * windowWidth + y) = matrix(x + x_offset, y + y_offset)
-            }
-          }
-          val windowNum = x_offset * (width - windowWidth + 1) + y_offset
-          newRow(featureIdx) = new DenseVector(features)
-          newRow(windowNumIdx) = windowNum.toLong
-          rows(windowNum) = Row.fromSeq(newRow)
-        }
-      }
-      rows
-    }
-
-    val newSchema = schema
-      .add(StructField(winCol, LongType))
-
-    sparkSession.createDataFrame(windowInstances, newSchema)
-  }
 
   def cvClassVectorGenerator(
       training: Dataset[_],
@@ -212,22 +153,6 @@ private[spark] object GCForestImpl extends Logging {
       .setSeed(System.currentTimeMillis() + num*123L + rfType.hashCode % num)
   }
 
-//  // create a gradient boosting classifier by type
-//  没找到GBTClassifier的用法
-//  def genGBTClassifier(rfType: String,
-//                       strategy: GCForestStrategy,
-//                       isScan: Boolean,
-//                       num: Int): GradientBoostingTreeClassifier = {
-//    val rf = rfType match {
-//      case "gbt" => new GradientBoostingTreeClassifier()
-//    }
-//
-//    rf.setSeed(System.currentTimeMillis() + num*123L + rfType.hashCode % num)
-//      .setCacheNodeIds(strategy.cacheNodeId)
-//      .setMinInfoGain(strategy.minInfoGain)
-//      .setMinInstancesPerNode(strategy.cascadeMinInsPerNode)
-//      .setMaxMemoryInMB(strategy.maxMemoryInMB)
-//  }
 
   def cvClassVectorGeneratorWithValidation(
       training: Dataset[_],
@@ -409,44 +334,7 @@ private[spark] object GCForestImpl extends Logging {
 
     println(s"[$getNowTime] Multi Grained Scanning begin!")
 
-    if (strategy.dataStyle == "Img" && strategy.multiScanWindow.length > 0) {
-      require(strategy.multiScanWindow.length % 2 == 0,
-        "The multiScanWindow must has the even number for image-style data")
-
-      val scanFeatures = ArrayBuffer[Dataset[_]]()
-
-      Range(0, strategy.multiScanWindow.length / 2).foreach { i =>
-        // Get the size of scan window
-        val (w, h) = (strategy.multiScanWindow(i), strategy.multiScanWindow(i + 1))
-        val windowInstances =
-          extractMatrixRDD(dataset, w, h, strategy.dataSize, strategy.featuresCol, strategy.winCol)
-
-        val rfc =
-          genRFClassifier("rfc", strategy, isScan = true, num = 0)
-        var (rfcFeature, _, rfcModel) =
-          cvClassVectorGenerator(windowInstances, rfc, strategy.numFolds, strategy.seed, strategy,
-            isScan = true, "Scan 1")
-        rfcFeature = rfcFeature
-          .withColumn(strategy.forestIdCol, lit(1))
-          .withColumn(strategy.scanCol, lit(i))
-
-        scanFeatures += rfcFeature
-
-        val crfc = genRFClassifier("crfc", strategy, isScan = true, num = 1)
-        var (crfcFeature, _, crfcModel) =
-          cvClassVectorGenerator(windowInstances, crfc, strategy.numFolds, strategy.seed, strategy,
-            isScan = true, "Scan 2")
-        crfcFeature = crfcFeature
-          .withColumn(strategy.forestIdCol, lit(2))
-          .withColumn(strategy.scanCol, lit(i))
-
-        scanFeatures += crfcFeature
-
-        mgsModels += new MultiGrainedScanModel(Array(w, h), rfcModel, crfcModel)
-      }
-      scanFeature = concatenate(strategy, scanFeatures.head, scanFeatures.tail: _*).cache()
-
-    } else if (strategy.dataStyle == "Seq" && strategy.multiScanWindow.length > 0) {
+    if (strategy.dataStyle == "Seq" && strategy.multiScanWindow.length > 0) {
       val scanFeatures = ArrayBuffer[Dataset[_]]()
       strategy.multiScanWindow.indices.foreach { i => // for each window
         val windowSize = strategy.multiScanWindow(i)
@@ -695,7 +583,7 @@ private[spark] object GCForestImpl extends Logging {
       val randomForests = (
         Range(0, strategy.rfNum).map ( _ => "rfc" )
         ++
-        Range(strategy.rfNum, strategy.rfNum + strategy.crfNum).map ( _ => "crfc" )
+        Range(strategy.rfNum, strategy.rfNum + strategy.crfNum).map ( _ => "crfccrfc" )
         ).toArray[String]
       assert(randomForests.length == strategy.rfNum + strategy.crfNum, "random Forests inValid!")
       // scanFeatures_*: (instanceId, label, features)

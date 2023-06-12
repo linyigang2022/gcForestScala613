@@ -23,13 +23,13 @@ import org.apache.spark.util.SizeEstimator
 import org.apache.spark.util.random.XORShiftRandom
 
 
-private [spark] object CompletelyRandomForestImpl extends Logging {
+private[spark] object CompletelyRandomForestImpl extends Logging {
   /**
-    * Train a completely random forest.
-    *
-    * @param input Training data: RDD of `LabeledPoint`
-    * @return an unweighted set of trees
-    */
+   * Train a completely random forest.
+   *
+   * @param input Training data: RDD of `LabeledPoint`
+   * @return an unweighted set of trees
+   */
   def run(input: RDD[LabeledPoint],
           strategy: OldStrategy,
           numTrees: Int,
@@ -132,7 +132,7 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
       // Each group of nodes may come from one or multiple trees, and at multiple levels.
       timer.start("selectNodesToSplit")
       val (nodesForGroup, treeToNodeToIndexInfo) =
-      CompletelyRandomForestImpl.selectNodesToSplit(nodeStack, maxMemoryUsage, metadata, rng)
+        CompletelyRandomForestImpl.selectNodesToSplit(nodeStack, maxMemoryUsage, metadata, rng)
       totalNodes += nodesForGroup.values.map(_.length).sum
       timer.stop("selectNodesToSplit")
       // Sanity check (should never occur):
@@ -143,13 +143,13 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
         " Size estimates: %.1f M".format(SizeEstimator.estimate(nodesForGroup) / (1024 * 1024.0)))
       // Only send trees to worker if they contain nodes being split this iteration.
       val topNodesForGroup: Map[Int, LearningNode] =
-      nodesForGroup.keys.map(treeIdx => treeIdx -> topNodes(treeIdx)).toMap
+        nodesForGroup.keys.map(treeIdx => treeIdx -> topNodes(treeIdx)).toMap
 
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findRandomSplits")
       CompletelyRandomForestImpl
         .findRandomSplits(baggedInput, metadata, topNodesForGroup, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeStack, timer, nodeIdCache)
+          treeToNodeToIndexInfo, splits, nodeStack, timer, nodeIdCache)
       timer.stop("findRandomSplits")
       group += 1
     }
@@ -202,19 +202,19 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Helper for binSeqOp, for data which can contain a mix of ordered and unordered features.
-    *
-    * For ordered features, a single bin is updated.
-    * For unordered features, bins correspond to subsets of categories; either the left or right bin
-    * for each subset is updated.
-    *
-    * @param agg  Array storing aggregate calculation, with a set of sufficient statistics for
-    *             each (feature, bin).
-    * @param treePoint  Data point being aggregated.
-    * @param splits possible splits indexed (numFeatures)(numSplits)
-    * @param unorderedFeatures  Set of indices of unordered features.
-    * @param instanceWeight  Weight (importance) of instance in dataset.
-    */
+   * Helper for binSeqOp, for data which can contain a mix of ordered and unordered features.
+   *
+   * For ordered features, a single bin is updated.
+   * For unordered features, bins correspond to subsets of categories; either the left or right bin
+   * for each subset is updated.
+   *
+   * @param agg               Array storing aggregate calculation, with a set of sufficient statistics for
+   *                          each (feature, bin).
+   * @param treePoint         Data point being aggregated.
+   * @param splits            possible splits indexed (numFeatures)(numSplits)
+   * @param unorderedFeatures Set of indices of unordered features.
+   * @param instanceWeight    Weight (importance) of instance in dataset.
+   */
   private def mixedBinSeqOp(agg: TreeStatsAggregator,
                             treePoint: TreePoint,
                             splits: Array[Array[Split]],
@@ -260,15 +260,15 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Helper for binSeqOp, for regression and for classification with only ordered features.
-    *
-    * For each feature, the sufficient statistics of one bin are updated.
-    *
-    * @param agg  Array storing aggregate calculation, with a set of sufficient statistics for
-    *             each (feature, bin).
-    * @param treePoint  Data point being aggregated.
-    * @param instanceWeight  Weight (importance) of instance in dataset.
-    */
+   * Helper for binSeqOp, for regression and for classification with only ordered features.
+   *
+   * For each feature, the sufficient statistics of one bin are updated.
+   *
+   * @param agg            Array storing aggregate calculation, with a set of sufficient statistics for
+   *                       each (feature, bin).
+   * @param treePoint      Data point being aggregated.
+   * @param instanceWeight Weight (importance) of instance in dataset.
+   */
   private def orderedBinSeqOp(agg: TreeStatsAggregator,
                               treePoint: TreePoint,
                               instanceWeight: Double,
@@ -297,25 +297,25 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Given a group of nodes, this finds the best split for each node.
-    *
-    * @param input Training data: RDD of [[TreePoint]]
-    * @param metadata Learning and dataset metadata
-    * @param topNodesForGroup For each tree in group, tree index -> root node.
-    *                         Used for matching instances with nodes.
-    * @param nodesForGroup Mapping: treeIndex --> nodes to be split in tree
-    * @param treeToNodeToIndexInfo Mapping: treeIndex --> nodeIndex --> nodeIndexInfo,
-    *                              where nodeIndexInfo stores the index in the group and the
-    *                              feature subsets (if using feature subsets).
-    * @param splits possible splits for all features, indexed (numFeatures)(numSplits)
-    * @param nodeStack  Queue of nodes to split, with values (treeIndex, node).
-    *                   Updated with new non-leaf nodes which are created.
-    * @param nodeIdCache Node Id cache containing an RDD of Array[Int] where
-    *                    each value in the array is the data point's node Id
-    *                    for a corresponding tree. This is used to prevent the need
-    *                    to pass the entire tree to the executors during
-    *                    the node stat aggregation phase.
-    */
+   * Given a group of nodes, this finds the best split for each node.
+   *
+   * @param input                 Training data: RDD of [[TreePoint]]
+   * @param metadata              Learning and dataset metadata
+   * @param topNodesForGroup      For each tree in group, tree index -> root node.
+   *                              Used for matching instances with nodes.
+   * @param nodesForGroup         Mapping: treeIndex --> nodes to be split in tree
+   * @param treeToNodeToIndexInfo Mapping: treeIndex --> nodeIndex --> nodeIndexInfo,
+   *                              where nodeIndexInfo stores the index in the group and the
+   *                              feature subsets (if using feature subsets).
+   * @param splits                possible splits for all features, indexed (numFeatures)(numSplits)
+   * @param nodeStack             Queue of nodes to split, with values (treeIndex, node).
+   *                              Updated with new non-leaf nodes which are created.
+   * @param nodeIdCache           Node Id cache containing an RDD of Array[Int] where
+   *                              each value in the array is the data point's node Id
+   *                              for a corresponding tree. This is used to prevent the need
+   *                              to pass the entire tree to the executors during
+   *                              the node stat aggregation phase.
+   */
   private[tree] def findRandomSplits(input: RDD[BaggedPoint[TreePoint]],
                                      metadata: DecisionTreeMetadata,
                                      topNodesForGroup: Map[Int, LearningNode],
@@ -359,17 +359,17 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     logDebug("using nodeIdCache = " + nodeIdCache.nonEmpty.toString)
 
     /**
-      * Performs a sequential aggregation over a partition for a particular tree and node.
-      *
-      * For each feature, the aggregate sufficient statistics are updated for the relevant
-      * bins.
-      *
-      * @param treeIndex Index of the tree that we want to perform aggregation for.
-      * @param nodeInfo The node info for the tree node.
-      * @param agg Array storing aggregate calculation, with a set of sufficient statistics
-      *            for each (node, feature, bin).
-      * @param baggedPoint Data point being aggregated.
-      */
+     * Performs a sequential aggregation over a partition for a particular tree and node.
+     *
+     * For each feature, the aggregate sufficient statistics are updated for the relevant
+     * bins.
+     *
+     * @param treeIndex   Index of the tree that we want to perform aggregation for.
+     * @param nodeInfo    The node info for the tree node.
+     * @param agg         Array storing aggregate calculation, with a set of sufficient statistics
+     *                    for each (node, feature, bin).
+     * @param baggedPoint Data point being aggregated.
+     */
     def nodeBinSeqOp(treeIndex: Int,
                      nodeInfo: NodeIndexInfo,
                      agg: Array[TreeStatsAggregator],
@@ -389,16 +389,16 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     }
 
     /**
-      * Performs a sequential aggregation over a partition.
-      *
-      * Each data point contributes to one node. For each feature,
-      * the aggregate sufficient statistics are updated for the relevant bins.
-      *
-      * @param agg  Array storing aggregate calculation, with a set of sufficient statistics for
-      *             each (node, feature, bin).
-      * @param baggedPoint   Data point being aggregated.
-      * @return  agg
-      */
+     * Performs a sequential aggregation over a partition.
+     *
+     * Each data point contributes to one node. For each feature,
+     * the aggregate sufficient statistics are updated for the relevant bins.
+     *
+     * @param agg         Array storing aggregate calculation, with a set of sufficient statistics for
+     *                    each (node, feature, bin).
+     * @param baggedPoint Data point being aggregated.
+     * @return agg
+     */
     def binSeqOp(agg: Array[TreeStatsAggregator],
                  baggedPoint: BaggedPoint[TreePoint]): Array[TreeStatsAggregator] = {
       treeToNodeToIndexInfo.foreach { case (treeIndex, nodeIndexToInfo) =>
@@ -410,8 +410,8 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     }
 
     /**
-      * Do the same thing as binSeqOp, but with nodeIdCache.
-      */
+     * Do the same thing as binSeqOp, but with nodeIdCache.
+     */
     def binSeqOpWithNodeIdCache(agg: Array[TreeStatsAggregator],
                                 dataPoint: (BaggedPoint[TreePoint], Array[Int])):
     Array[TreeStatsAggregator] = {
@@ -426,9 +426,9 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     }
 
     /**
-      * Get node index in group --> features indices map,
-      * which is a short cut to find feature indices for a node given node index in group.
-      */
+     * Get node index in group --> features indices map,
+     * which is a short cut to find feature indices for a node given node index in group.
+     */
     def getNodeToFeatures(treeToNodeToIndexInfo: Map[Int, Map[Int, NodeIndexInfo]]):
     Option[Map[Int, Array[Int]]] = {
       if (!metadata.subsamplingFeatures) {
@@ -518,7 +518,7 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
 
         // find random split for each node
         val (split: Split, stats: ImpurityStats) =
-        binsToRandomSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
+          binsToRandomSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
         (nodeIndex, (split, stats))
     }.collectAsMap()
     timer.stop("findBestSplits - chooseSplits - collectAsMap to master")
@@ -591,16 +591,16 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Calculate the impurity statistics for a given (feature, split) based upon left/right
-    * aggregates.
-    *
-    * @param stats the recycle impurity statistics for this feature's all splits,
-    *              only 'impurity' and 'impurityCalculator' are valid between each iteration
-    * @param leftImpurityCalculator left node aggregates for this (feature, split)
-    * @param rightImpurityCalculator right node aggregate for this (feature, split)
-    * @param metadata learning and dataset metadata for DecisionTree
-    * @return Impurity statistics for this (feature, split)
-    */
+   * Calculate the impurity statistics for a given (feature, split) based upon left/right
+   * aggregates.
+   *
+   * @param stats                   the recycle impurity statistics for this feature's all splits,
+   *                                only 'impurity' and 'impurityCalculator' are valid between each iteration
+   * @param leftImpurityCalculator  left node aggregates for this (feature, split)
+   * @param rightImpurityCalculator right node aggregate for this (feature, split)
+   * @param metadata                learning and dataset metadata for DecisionTree
+   * @return Impurity statistics for this (feature, split)
+   */
   private def calculateImpurityStats(stats: ImpurityStats,
                                      leftImpurityCalculator: ImpurityCalculator,
                                      rightImpurityCalculator: ImpurityCalculator,
@@ -649,11 +649,11 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Find the best split for a node.
-    *
-    * @param binAggregates Bin statistics.
-    * @return tuple for best split: (Split, information gain, prediction at node)
-    */
+   * Find the best split for a node.
+   *
+   * @param binAggregates Bin statistics.
+   * @return tuple for best split: (Split, information gain, prediction at node)
+   */
   private[tree] def binsToRandomSplit(binAggregates: TreeStatsAggregator,
                                       splits: Array[Array[Split]],
                                       featuresForNode: Option[Array[Int]],
@@ -678,116 +678,116 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     // For each (feature, split), calculate the gain, and select the random (feature, split).
     val featureSplitsAndImpurityStats = validFeatureSplits.map {
       case (featureIndexIdx, featureIndex) =>
-      val numSplits = binAggregates.metadata.numSplits(featureIndex)
-      val rand = new Random(System.currentTimeMillis())
-      if (binAggregates.metadata.isContinuous(featureIndex)) {
-        // Cumulative sum (scanLeft) of bin statistics.
-        // Afterwards, binAggregates for a bin is the sum of aggregates for
-        // that bin + all preceding bins.
-        val nodeFeatureOffset = binAggregates.getFeatureOffset(featureIndexIdx)
-        var splitIndex = 0
-        while (splitIndex < numSplits) {
-          binAggregates.mergeForFeature(nodeFeatureOffset, splitIndex + 1, splitIndex)
-          splitIndex += 1
-        }
-        // Find random split.
-        val random_split_index = rand.nextInt(numSplits)
-        val leftChildStats = binAggregates
-          .getImpurityCalculator(nodeFeatureOffset, random_split_index)
-        val rightChildStats =
-          binAggregates.getImpurityCalculator(nodeFeatureOffset, numSplits)
-        rightChildStats.subtract(leftChildStats)
-        gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
-          leftChildStats, rightChildStats, binAggregates.metadata)
-
-        (splits(featureIndex)(random_split_index), gainAndImpurityStats)
-
-      } else if (binAggregates.metadata.isUnordered(featureIndex)) {
-        // Unordered categorical feature
-        val leftChildOffset = binAggregates.getFeatureOffset(featureIndexIdx)
-        val random_split_index = rand.nextInt(numSplits)
-        val leftChildStats = binAggregates
-          .getImpurityCalculator(leftChildOffset, random_split_index)
-        val rightChildStats = binAggregates.getParentImpurityCalculator()
-          .subtract(leftChildStats)
-        gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
-          leftChildStats, rightChildStats, binAggregates.metadata)
-
-        (splits(featureIndex)(random_split_index), gainAndImpurityStats)
-
-      } else {
-        // Ordered categorical feature
-        val nodeFeatureOffset = binAggregates.getFeatureOffset(featureIndexIdx)
-        val numCategories = binAggregates.metadata.numBins(featureIndex)
-
-        /* Each bin is one category (feature value).
-         * The bins are ordered based on centroidForCategories, and this ordering determines which
-         * splits are considered.  (With K categories, we consider K - 1 possible splits.)
-         *
-         * centroidForCategories is a list: (category, centroid)
-         */
-        val centroidForCategories = Range(0, numCategories).map { featureValue =>
-          val categoryStats =
-            binAggregates.getImpurityCalculator(nodeFeatureOffset, featureValue)
-          val centroid = if (categoryStats.count != 0) {
-            if (binAggregates.metadata.isMulticlass) {
-              // multiclass classification
-              // For categorical variables in multiclass classification,
-              // the bins are ordered by the impurity of their corresponding labels.
-              categoryStats.calculate()
-            } else if (binAggregates.metadata.isClassification) {
-              // binary classification
-              // For categorical variables in binary classification,
-              // the bins are ordered by the count of class 1.
-              categoryStats.stats(1)
-            } else {
-              // regression
-              // For categorical variables in regression and binary classification,
-              // the bins are ordered by the prediction.
-              categoryStats.predict
-            }
-          } else {
-            Double.MaxValue
+        val numSplits = binAggregates.metadata.numSplits(featureIndex)
+        val rand = new Random(System.currentTimeMillis())
+        if (binAggregates.metadata.isContinuous(featureIndex)) {
+          // Cumulative sum (scanLeft) of bin statistics.
+          // Afterwards, binAggregates for a bin is the sum of aggregates for
+          // that bin + all preceding bins.
+          val nodeFeatureOffset = binAggregates.getFeatureOffset(featureIndexIdx)
+          var splitIndex = 0
+          while (splitIndex < numSplits) {
+            binAggregates.mergeForFeature(nodeFeatureOffset, splitIndex + 1, splitIndex)
+            splitIndex += 1
           }
-          (featureValue, centroid)
+          // Find random split.
+          val random_split_index = rand.nextInt(numSplits)
+          val leftChildStats = binAggregates
+            .getImpurityCalculator(nodeFeatureOffset, random_split_index)
+          val rightChildStats =
+            binAggregates.getImpurityCalculator(nodeFeatureOffset, numSplits)
+          rightChildStats.subtract(leftChildStats)
+          gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
+            leftChildStats, rightChildStats, binAggregates.metadata)
+
+          (splits(featureIndex)(random_split_index), gainAndImpurityStats)
+
+        } else if (binAggregates.metadata.isUnordered(featureIndex)) {
+          // Unordered categorical feature
+          val leftChildOffset = binAggregates.getFeatureOffset(featureIndexIdx)
+          val random_split_index = rand.nextInt(numSplits)
+          val leftChildStats = binAggregates
+            .getImpurityCalculator(leftChildOffset, random_split_index)
+          val rightChildStats = binAggregates.getParentImpurityCalculator()
+            .subtract(leftChildStats)
+          gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
+            leftChildStats, rightChildStats, binAggregates.metadata)
+
+          (splits(featureIndex)(random_split_index), gainAndImpurityStats)
+
+        } else {
+          // Ordered categorical feature
+          val nodeFeatureOffset = binAggregates.getFeatureOffset(featureIndexIdx)
+          val numCategories = binAggregates.metadata.numBins(featureIndex)
+
+          /* Each bin is one category (feature value).
+           * The bins are ordered based on centroidForCategories, and this ordering determines which
+           * splits are considered.  (With K categories, we consider K - 1 possible splits.)
+           *
+           * centroidForCategories is a list: (category, centroid)
+           */
+          val centroidForCategories = Range(0, numCategories).map { featureValue =>
+            val categoryStats =
+              binAggregates.getImpurityCalculator(nodeFeatureOffset, featureValue)
+            val centroid = if (categoryStats.count != 0) {
+              if (binAggregates.metadata.isMulticlass) {
+                // multiclass classification
+                // For categorical variables in multiclass classification,
+                // the bins are ordered by the impurity of their corresponding labels.
+                categoryStats.calculate()
+              } else if (binAggregates.metadata.isClassification) {
+                // binary classification
+                // For categorical variables in binary classification,
+                // the bins are ordered by the count of class 1.
+                categoryStats.stats(1)
+              } else {
+                // regression
+                // For categorical variables in regression and binary classification,
+                // the bins are ordered by the prediction.
+                categoryStats.predict
+              }
+            } else {
+              Double.MaxValue
+            }
+            (featureValue, centroid)
+          }
+
+          logDebug("Centroids for categorical variable: " + centroidForCategories.mkString(","))
+
+          // bins sorted by centroids
+          val categoriesSortedByCentroid = centroidForCategories.toList.sortBy(_._2)
+
+          logDebug("Sorted centroids for categorical variable = " +
+            categoriesSortedByCentroid.mkString(","))
+
+          // Cumulative sum (scanLeft) of bin statistics.
+          // Afterwards, binAggregates for a bin is the sum of aggregates for
+          // that bin + all preceding bins.
+          var splitIndex = 0
+          while (splitIndex < numSplits) {
+            val currentCategory = categoriesSortedByCentroid(splitIndex)._1
+            val nextCategory = categoriesSortedByCentroid(splitIndex + 1)._1
+            binAggregates.mergeForFeature(nodeFeatureOffset, nextCategory, currentCategory)
+            splitIndex += 1
+          }
+          // lastCategory = index of bin with total aggregates for this (node, feature)
+          val lastCategory = categoriesSortedByCentroid.last._1
+          // Find random split.
+          val random_split_index = rand.nextInt(numSplits)
+          val featureValue = categoriesSortedByCentroid(random_split_index)._1
+          val leftChildStats =
+            binAggregates.getImpurityCalculator(nodeFeatureOffset, featureValue)
+          val rightChildStats =
+            binAggregates.getImpurityCalculator(nodeFeatureOffset, lastCategory)
+          rightChildStats.subtract(leftChildStats)
+          gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
+            leftChildStats, rightChildStats, binAggregates.metadata)
+          val categoriesForSplit =
+            categoriesSortedByCentroid.map(_._1.toDouble).slice(0, random_split_index + 1)
+          val randomFeatureSplit =
+            new CategoricalSplit(featureIndex, categoriesForSplit.toArray, numCategories)
+          (randomFeatureSplit, gainAndImpurityStats)
         }
-
-        logDebug("Centroids for categorical variable: " + centroidForCategories.mkString(","))
-
-        // bins sorted by centroids
-        val categoriesSortedByCentroid = centroidForCategories.toList.sortBy(_._2)
-
-        logDebug("Sorted centroids for categorical variable = " +
-          categoriesSortedByCentroid.mkString(","))
-
-        // Cumulative sum (scanLeft) of bin statistics.
-        // Afterwards, binAggregates for a bin is the sum of aggregates for
-        // that bin + all preceding bins.
-        var splitIndex = 0
-        while (splitIndex < numSplits) {
-          val currentCategory = categoriesSortedByCentroid(splitIndex)._1
-          val nextCategory = categoriesSortedByCentroid(splitIndex + 1)._1
-          binAggregates.mergeForFeature(nodeFeatureOffset, nextCategory, currentCategory)
-          splitIndex += 1
-        }
-        // lastCategory = index of bin with total aggregates for this (node, feature)
-        val lastCategory = categoriesSortedByCentroid.last._1
-        // Find random split.
-        val random_split_index = rand.nextInt(numSplits)
-        val featureValue = categoriesSortedByCentroid(random_split_index)._1
-        val leftChildStats =
-          binAggregates.getImpurityCalculator(nodeFeatureOffset, featureValue)
-        val rightChildStats =
-          binAggregates.getImpurityCalculator(nodeFeatureOffset, lastCategory)
-        rightChildStats.subtract(leftChildStats)
-        gainAndImpurityStats = calculateImpurityStats(gainAndImpurityStats,
-          leftChildStats, rightChildStats, binAggregates.metadata)
-        val categoriesForSplit =
-          categoriesSortedByCentroid.map(_._1.toDouble).slice(0, random_split_index + 1)
-        val randomFeatureSplit =
-          new CategoricalSplit(featureIndex, categoriesForSplit.toArray, numCategories)
-        (randomFeatureSplit, gainAndImpurityStats)
-      }
     }
 
     val (randomSplit, randomSplitStats) =
@@ -812,32 +812,32 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Returns splits for decision tree calculation.
-    * Continuous and categorical features are handled differently.
-    *
-    * Continuous features:
-    *   For each feature, there are numBins - 1 possible splits representing the possible binary
-    *   decisions at each node in the tree.
-    *   This finds locations (feature values) for splits using a subsample of the data.
-    *
-    * Categorical features:
-    *   For each feature, there is 1 bin per split.
-    *   Splits and bins are handled in 2 ways:
-    *   (a) "unordered features"
-    *       For multiclass classification with a low-arity feature
-    *       (i.e., if isMulticlass && isSpaceSufficientForAllCategoricalSplits),
-    *       the feature is split based on subsets of categories.
-    *   (b) "ordered features"
-    *       For regression and binary classification,
-    *       and for multiclass classification with a high-arity feature,
-    *       there is one bin per category.
-    *
-    * @param input Training data: RDD of [[LabeledPoint]]
-    * @param metadata Learning and dataset metadata
-    * @param seed random seed
-    * @return Splits, an Array of [[Split]]
-    *          of size (numFeatures, numSplits)
-    */
+   * Returns splits for decision tree calculation.
+   * Continuous and categorical features are handled differently.
+   *
+   * Continuous features:
+   * For each feature, there are numBins - 1 possible splits representing the possible binary
+   * decisions at each node in the tree.
+   * This finds locations (feature values) for splits using a subsample of the data.
+   *
+   * Categorical features:
+   * For each feature, there is 1 bin per split.
+   * Splits and bins are handled in 2 ways:
+   * (a) "unordered features"
+   * For multiclass classification with a low-arity feature
+   * (i.e., if isMulticlass && isSpaceSufficientForAllCategoricalSplits),
+   * the feature is split based on subsets of categories.
+   * (b) "ordered features"
+   * For regression and binary classification,
+   * and for multiclass classification with a high-arity feature,
+   * there is one bin per category.
+   *
+   * @param input    Training data: RDD of [[LabeledPoint]]
+   * @param metadata Learning and dataset metadata
+   * @param seed     random seed
+   * @return Splits, an Array of [[Split]]
+   *         of size (numFeatures, numSplits)
+   */
   protected[tree] def findSplits(input: RDD[LabeledPoint],
                                  metadata: DecisionTreeMetadata,
                                  seed: Long): Array[Array[Split]] = {
@@ -867,9 +867,9 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   private def findSplitsByDicing(input: RDD[LabeledPoint],
-                                  metadata: DecisionTreeMetadata,
-                                  continuousFeatures: IndexedSeq[Int],
-                                  seed: Long = Random.nextLong): Array[Array[Split]] = {
+                                 metadata: DecisionTreeMetadata,
+                                 continuousFeatures: IndexedSeq[Int],
+                                 seed: Long = Random.nextLong): Array[Array[Split]] = {
 
     val continuousSplits: scala.collection.Map[Int, Array[Split]] = {
       // reduce the parallelism for split computations when there are less
@@ -913,11 +913,11 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Nested method to extract list of eligible categories given an index. It extracts the
-    * position of ones in a binary representation of the input. If binary
-    * representation of an number is 01101 (13), the output list should (3.0, 2.0,
-    * 0.0). The maxFeatureValue depict the number of rightmost digits that will be tested for ones.
-    */
+   * Nested method to extract list of eligible categories given an index. It extracts the
+   * position of ones in a binary representation of the input. If binary
+   * representation of an number is 01101 (13), the output list should (3.0, 2.0,
+   * 0.0). The maxFeatureValue depict the number of rightmost digits that will be tested for ones.
+   */
   private[tree] def extractMultiClassCategories(input: Int,
                                                 maxFeatureValue: Int): List[Double] = {
     var categories = List[Double]()
@@ -936,18 +936,18 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
   }
 
   /**
-    * Find splits for a continuous feature
-    * NOTE: Returned number of splits is set based on `featureSamples` and
-    *       could be different from the specified `numSplits`.
-    *       The `numSplits` attribute in the `DecisionTreeMetadata` class will be set accordingly.
-    *
-    * @param featureSamples feature values of each sample
-    * @param metadata decision tree metadata
-    *                 NOTE: `metadata.numbins` will be changed accordingly
-    *                       if there are not enough splits to be found
-    * @param featureIndex feature index to find splits
-    * @return array of split thresholds
-    */
+   * Find splits for a continuous feature
+   * NOTE: Returned number of splits is set based on `featureSamples` and
+   * could be different from the specified `numSplits`.
+   * The `numSplits` attribute in the `DecisionTreeMetadata` class will be set accordingly.
+   *
+   * @param featureSamples feature values of each sample
+   * @param metadata       decision tree metadata
+   *                       NOTE: `metadata.numbins` will be changed accordingly
+   *                       if there are not enough splits to be found
+   * @param featureIndex   feature index to find splits
+   * @return array of split thresholds
+   */
   private[tree] def findSplitsForContinuousFeature(featureSamples: Iterable[Double],
                                                    metadata: DecisionTreeMetadata,
                                                    featureIndex: Int,
@@ -991,22 +991,22 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
                                     val featureSubset: Option[Array[Int]]) extends Serializable
 
   /**
-    * Pull nodes off of the queue, and collect a group of nodes to be split on this iteration.
-    * This tracks the memory usage for aggregates and stops adding nodes when too much memory
-    * will be needed; this allows an adaptive number of nodes since different nodes may require
-    * different amounts of memory (if featureSubsetStrategy is not "all").
-    *
-    * @param nodeStack  Queue of nodes to split.
-    * @param maxMemoryUsage  Bound on size of aggregate statistics.
-    * @return  (nodesForGroup, treeToNodeToIndexInfo).
-    *          nodesForGroup holds the nodes to split: treeIndex --> nodes in tree.
-    *
-    *          treeToNodeToIndexInfo holds indices selected features for each node:
-    *            treeIndex --> (global) node index --> (node index in group, feature indices).
-    *          The (global) node index is the index in the tree; the node index in group is the
-    *           index in [0, numNodesInGroup) of the node in this group.
-    *          The feature indices are None if not subsampling features.
-    */
+   * Pull nodes off of the queue, and collect a group of nodes to be split on this iteration.
+   * This tracks the memory usage for aggregates and stops adding nodes when too much memory
+   * will be needed; this allows an adaptive number of nodes since different nodes may require
+   * different amounts of memory (if featureSubsetStrategy is not "all").
+   *
+   * @param nodeStack      Queue of nodes to split.
+   * @param maxMemoryUsage Bound on size of aggregate statistics.
+   * @return (nodesForGroup, treeToNodeToIndexInfo).
+   *         nodesForGroup holds the nodes to split: treeIndex --> nodes in tree.
+   *
+   *         treeToNodeToIndexInfo holds indices selected features for each node:
+   *         treeIndex --> (global) node index --> (node index in group, feature indices).
+   *         The (global) node index is the index in the tree; the node index in group is the
+   *         index in [0, numNodesInGroup) of the node in this group.
+   *         The feature indices are None if not subsampling features.
+   */
   private[tree] def selectNodesToSplit(nodeStack: mutable.Stack[(Int, LearningNode)],
                                        maxMemoryUsage: Long,
                                        metadata: DecisionTreeMetadata,
@@ -1039,7 +1039,7 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
           node
         mutableTreeToNodeToIndexInfo
           .getOrElseUpdate(treeIndex, new mutable.HashMap[Int, NodeIndexInfo]())(node.id)
-          = new NodeIndexInfo(numNodesInGroup, featureSubset)
+        = new NodeIndexInfo(numNodesInGroup, featureSubset)
       }
       numNodesInGroup += 1
       memUsage += nodeMemUsage
@@ -1052,17 +1052,17 @@ private [spark] object CompletelyRandomForestImpl extends Logging {
     }
     // Convert mutable maps to immutable ones.
     val nodesForGroup: Map[Int, Array[LearningNode]] =
-    mutableNodesForGroup.mapValues(_.toArray).toMap
+      mutableNodesForGroup.mapValues(_.toArray).toMap
     val treeToNodeToIndexInfo = mutableTreeToNodeToIndexInfo.mapValues(_.toMap).toMap
     (nodesForGroup, treeToNodeToIndexInfo)
   }
 
   /**
-    * Get the number of values to be stored for this node in the bin aggregates.
-    *
-    * @param featureSubset  Indices of features which may be split at this node.
-    *                       If None, then use all features.
-    */
+   * Get the number of values to be stored for this node in the bin aggregates.
+   *
+   * @param featureSubset Indices of features which may be split at this node.
+   *                      If None, then use all features.
+   */
   private def aggregateSizeForNode(metadata: DecisionTreeMetadata,
                                    featureSubset: Option[Array[Int]]): Long = {
     val totalBins = if (featureSubset.nonEmpty) {

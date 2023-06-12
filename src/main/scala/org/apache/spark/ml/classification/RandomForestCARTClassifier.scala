@@ -6,15 +6,16 @@ package org.apache.spark.ml.classification
 
 import org.json4s.{DefaultFormats, JObject}
 import org.json4s.JsonDSL._
-
 import org.apache.spark.annotation.Since
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tree._
+import org.apache.spark.ml.tree.impl.RandomForest
 import org.apache.spark.ml.tree.impl.RandomForestImpl
-import org.apache.spark.ml.util.{Instrumentation1=>Instrumentation, _}
+import org.apache.spark.ml.util._
 import org.apache.spark.ml.util.DefaultParamsReader.Metadata
+import org.apache.spark.ml.util.Instrumentation.instrumented
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
 import org.apache.spark.mllib.tree.model.{RandomForestModel => OldRandomForestModel}
 import org.apache.spark.rdd.RDD
@@ -93,7 +94,9 @@ class RandomForestCARTClassifier(override val uid: String)
   override def setFeatureSubsetStrategy(value: String): this.type =
     set(featureSubsetStrategy, value)
 
-  override protected def train(dataset: Dataset[_]): RandomForestCARTModel = {
+  override protected def train(dataset: Dataset[_]): RandomForestCARTModel = instrumented { instr =>
+    instr.logPipelineStage(this)
+    instr.logDataset(dataset)
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
     val numClasses: Int = getNumClasses(dataset)
@@ -108,18 +111,46 @@ class RandomForestCARTClassifier(override val uid: String)
     val strategy =
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
 
-    val instr = Instrumentation.create(this, oldDataset)
-    instr.logParams(params: _*)
+    instr.logParams(this, labelCol, featuresCol, predictionCol, probabilityCol, rawPredictionCol,
+      impurity, numTrees, featureSubsetStrategy, maxDepth, maxBins, maxMemoryInMB, minInfoGain,
+      minInstancesPerNode, seed, subsamplingRate, thresholds, cacheNodeIds, checkpointInterval)
 
-    val trees = RandomForestImpl
+    val trees = RandomForest
       .run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed, Some(instr))
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     val numFeatures = oldDataset.first().features.size
-    val m = new RandomForestCARTModel(trees, numFeatures, numClasses)
-    instr.logSuccess(m)
-    m
+    instr.logNumClasses(numClasses)
+    instr.logNumFeatures(numFeatures)
+    new RandomForestCARTModel(trees, numFeatures, numClasses)
   }
+//  {
+//    val categoricalFeatures: Map[Int, Int] =
+//      MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
+//    val numClasses: Int = getNumClasses(dataset)
+//
+//    if (isDefined(thresholds)) {
+//      require($(thresholds).length == numClasses, this.getClass.getSimpleName +
+//        ".train() called with non-matching numClasses and thresholds.length." +
+//        s" numClasses=$numClasses, but thresholds has length ${$(thresholds).length}")
+//    }
+//
+//    val oldDataset: RDD[LabeledPoint] = extractLabeledPoints(dataset, numClasses)
+//    val strategy =
+//      super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
+//
+//    val instr = Instrumentation.create(this, oldDataset)
+//    instr.logParams(params: _*)
+//
+//    val trees = RandomForest
+//      .run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed, Some(instr))
+//      .map(_.asInstanceOf[DecisionTreeClassificationModel])
+//
+//    val numFeatures = oldDataset.first().features.size
+//    val m = new RandomForestCARTModel(trees, numFeatures, numClasses)
+//    instr.logSuccess(m)
+//    m
+//  }
 
   @Since("1.4.1")
   override def copy(extra: ParamMap): RandomForestCARTClassifier = defaultCopy(extra)
