@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 !**/models/
 !**/checkpoint/
+!**/.idea/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
