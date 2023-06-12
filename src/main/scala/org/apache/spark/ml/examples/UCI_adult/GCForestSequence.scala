@@ -3,7 +3,7 @@
  */
 package org.apache.spark.ml.examples.UCI_adult
 
-import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestCARTClassifier}
+import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier}
 import org.apache.spark.ml.datasets.UCI_adult
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
@@ -26,7 +26,8 @@ object GCForestSequence {
     //    spark.conf.set("spark.default.parallelism", parallelism)
     //    spark.conf.set("spark.locality.wait.node", 0)
     spark.conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RandomForestCARTClassifier]))
+//    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RandomForestCARTClassifier]))
+    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RandomForestClassifier]))
 
     trainParser.parse(args, TrainParams()).map(param => {
 

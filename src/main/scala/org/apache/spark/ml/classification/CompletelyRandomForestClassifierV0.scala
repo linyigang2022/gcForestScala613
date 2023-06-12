@@ -10,15 +10,14 @@ import org.apache.spark.ml.util.{Instrumentation1 => Instrumentation, _}
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
-import org.apache.spark.ml.classification.{CompletelyRandomForestClassifierV0=>CompletelyRandomForestClassifier}
 
 
-class CompletelyRandomForestClassifier(override val uid: String)
-  extends RandomForestCARTClassifier {
+class CompletelyRandomForestClassifierV0(override val uid: String)
+  extends RandomForestClassifier {
 
   def this() = this(Identifiable.randomUID("crfc"))
 
-  override protected def train(dataset: Dataset[_]): RandomForestCARTModel = {
+  override protected def train(dataset: Dataset[_]): RandomForestClassificationModel = {
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
     val numClasses: Int = getNumClasses(dataset)
@@ -41,7 +40,7 @@ class CompletelyRandomForestClassifier(override val uid: String)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     val numFeatures = oldDataset.first().features.size
-    val m = new RandomForestCARTModel(trees, numFeatures, numClasses)
+    val m = new RandomForestClassificationModel(trees, numFeatures, numClasses)
     instr.logSuccess(m)
     m
   }
