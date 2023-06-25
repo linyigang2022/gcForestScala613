@@ -4,6 +4,7 @@
 package org.apache.spark.ml.core
 
 import com.sun.jna._
+
 object JNAScala {
 
   Native.register("binToBestSplit")

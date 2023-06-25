@@ -26,7 +26,10 @@ spark-submit --master yarn \
   # 1*2 1861s
   # 1*3 1462s
   # 1*4 1394s 1335s
-
+ # 1*1 3671s
+  # 1*2 1861s
+  # 1*3 1462s
+  # 1*4 1394s 1335s
   # 服务器
   # ① 8*4 979s
   # ② 2*2 557s
@@ -45,11 +48,21 @@ spark-submit --master yarn \
   # medusa002 local
   spark-submit --master local[*] \
     --class examples.UCI_adult.GCForestSequence \
-    --executor-memory 4g \
     gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    --train linyigang/data/uci_adult/adult.data \
-    --test linyigang/data/uci_adult/adult.test \
-    --features linyigang/data/uci_adult/features
+    --train file:///home/aogengyuan/linyigang/dataset/uci_adult/adult.data \
+    --test file:///home/aogengyuan/linyigang/dataset/uci_adult/adult.test \
+    --features file:///home/aogengyuan/linyigang/dataset/uci_adult/features
+
+    spark-submit --master yarn \
+      --class examples.UCI_adult.GCForestSequence \
+      --executor-cores 2 \
+      --num-executors 16 \
+      --conf spark.dynamicAllocation.minExecutors=16 \
+      --conf spark.dynamicAllocation.maxExecutors=16 \
+      gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    --train file:///home/aogengyuan/linyigang/dataset/uci_adult/adult.data \
+    --test file:///home/aogengyuan/linyigang/dataset/uci_adult/adult.test \
+    --features file:///home/aogengyuan/linyigang/dataset/uci_adult/features
 
 spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence --conf spark.executor.userClassPathFirst=true --conf spark.driver.userClassPathFirst=true gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar --train hdfs:///user/linyigang/data/uci_adult/adult.data --test data/uci_adult/adult.test --features data/uci_adult/features
 
@@ -80,3 +93,6 @@ spark-submit --master yarn \
   --train linyigang/data/uci_adult/adult.data \
   --test linyigang/data/uci_adult/adult.test \
   --features linyigang/data/uci_adult/features
+
+
+spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar --train ./uci_adult/adult.data --test ./uci_adult/adult.test --features ./uci_adult/features

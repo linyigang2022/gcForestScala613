@@ -24,28 +24,29 @@ import org.apache.spark.util.SizeEstimator
 private[spark] object GCForestImpl extends Logging {
 
   def run(
-      input: Dataset[_],
-      gcforestStategy: GCForestStrategy
-      ): GCForestClassificationModel = {
+           input: Dataset[_],
+           gcforestStategy: GCForestStrategy
+         ): GCForestClassificationModel = {
     train(input, strategy = gcforestStategy)
   }
 
   def runWithValidation(
-      input: Dataset[_],
-      validationInput: Dataset[_],
-      gCForestStrategy: GCForestStrategy
-      ): GCForestClassificationModel = {
+                         input: Dataset[_],
+                         validationInput: Dataset[_],
+                         gCForestStrategy: GCForestStrategy
+                       ): GCForestClassificationModel = {
     trainWithValidation(input, validationInput, gCForestStrategy)
   }
 
   val dateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS")
 
   /**
-    * Scan Sequence Data
-    * @param dataset raw input label and features
-    * @param windowSize the window size
-    * @return
-    */
+   * Scan Sequence Data
+   *
+   * @param dataset    raw input label and features
+   * @param windowSize the window size
+   * @return
+   */
   def extractSequenceRDD(dataset: Dataset[_],
                          windowSize: Int,
                          dataSize: Array[Int],
@@ -92,13 +93,13 @@ private[spark] object GCForestImpl extends Logging {
 
 
   def cvClassVectorGenerator(
-      training: Dataset[_],
-      rfc: RandomForestClassifier,
-      numFolds: Int,
-      seed: Long,
-      strategy: GCForestStrategy,
-      isScan: Boolean = false,
-      message: String = ""):
+                              training: Dataset[_],
+                              rfc: RandomForestClassifier,
+                              numFolds: Int,
+                              seed: Long,
+                              strategy: GCForestStrategy,
+                              isScan: Boolean = false,
+                              message: String = ""):
   (DataFrame, Metric, RandomForestClassificationModel) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
@@ -145,26 +146,26 @@ private[spark] object GCForestImpl extends Logging {
       .setMaxBins(strategy.maxBins)
       .setMaxDepth(strategy.maxDepth)
       .setMinInstancesPerNode(if (isScan) strategy.scanMinInsPerNode
-        else strategy.cascadeMinInsPerNode)
+      else strategy.cascadeMinInsPerNode)
       .setMinInfoGain(strategy.minInfoGain)
       // .setFeatureSubsetStrategy(strategy.featureSubsetStrategy)
       .setCacheNodeIds(strategy.cacheNodeId)
       .setMaxMemoryInMB(strategy.maxMemoryInMB)
-      .setSeed(System.currentTimeMillis() + num*123L + rfType.hashCode % num)
+      .setSeed(System.currentTimeMillis() + num * 123L + rfType.hashCode % num)
   }
 
 
   def cvClassVectorGeneratorWithValidation(
-      training: Dataset[_],
-      testing: Dataset[_],
-      rfc_class: String,
-      numFolds: Int,
-      seed: Long,
-      timer: TimeTracker,
-      strategy: GCForestStrategy,
-      isScan: Boolean,
-      layer_id: Int,
-      estimator_id: Int):
+                                            training: Dataset[_],
+                                            testing: Dataset[_],
+                                            rfc_class: String,
+                                            numFolds: Int,
+                                            seed: Long,
+                                            timer: TimeTracker,
+                                            strategy: GCForestStrategy,
+                                            isScan: Boolean,
+                                            layer_id: Int,
+                                            estimator_id: Int):
   (DataFrame, DataFrame, Metric, Metric, Array[String]) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
@@ -189,13 +190,16 @@ private[spark] object GCForestImpl extends Logging {
         val validationDataset = sparkSession.createDataFrame(v, schema)
         val model = rfc.fit(trainingDataset)
         timer.stop(s"cvGenerator - cv - $splitIndex")
+        println("cvGenerator")
         if (strategy.idebug) {
           println(s"[$getNowTime] timer.stop(cvGenerator - cv - $splitIndex)")
         }
 
         // rawPrediction == probabilityCol
-        val val_result = model.transform(validationDataset).drop(strategy.featuresCol)
-            .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol)
+        val val_result = model.transform(validationDataset)
+          .drop(strategy.featuresCol)
+          .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol)
+        //        拼接feature，将结果的概率转化为feature
         out_train = if (out_train == null) val_result else out_train.union(val_result)
 
         if (!isScan) {
@@ -204,10 +208,13 @@ private[spark] object GCForestImpl extends Logging {
           println(s"[$getNowTime] $message ${numFolds}_folds.train_$splitIndex = $val_acc")
         }
 
+//        mark lyg 修改过
         val test_result = model.transform(testing)
+          .drop(strategy.featuresCol)
+          .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol + s"$splitIndex")
           .select(strategy.instanceCol, strategy.labelCol, strategy.featuresCol + s"$splitIndex")
         out_test = if (out_test == null) test_result
-          else out_test.join(test_result, Seq(strategy.instanceCol, strategy.labelCol))
+        else out_test.join(test_result, Seq(strategy.instanceCol, strategy.labelCol))
         val path = s"${strategy.modelPath}/layer-$layer_id-" +
           s"est-$estimator_id-$numFolds-folds-$splitIndex-$rfc_class"
         model.write.overwrite().save(path)
@@ -220,31 +227,32 @@ private[spark] object GCForestImpl extends Logging {
         Range(0, numFolds).map(k => col(strategy.featuresCol + s"$k")): _*))
       .select(strategy.instanceCol, strategy.labelCol, strategy.featuresCol)
     val test_metric = if (!isScan) gcForestEvaluator.evaluatePartition(out_test)
-                      else new Accuracy(0, 0)
+    else new Accuracy(0, 0)
     // scalastyle:on println
     (out_train, out_test, train_metric, test_metric, models)
   }
 
   /**
-    * Concat multi-scan features
-    * @param dataset one of a window
-    * @param sets the others
-    * @return input for Cascade Forest
-    */
+   * Concat multi-scan features
+   *
+   * @param dataset one of a window
+   * @param sets    the others
+   * @return input for Cascade Forest
+   */
   def concatenate(
-      strategy: GCForestStrategy,
-      dataset: Dataset[_],
-      sets: Dataset[_]*
-     ): DataFrame = {
+                   strategy: GCForestStrategy,
+                   dataset: Dataset[_],
+                   sets: Dataset[_]*
+                 ): DataFrame = {
     val sparkSession = dataset.sparkSession
     var unionSet = dataset.toDF()
     sets.foreach(ds => unionSet = unionSet.union(ds.toDF()))
 
-    class Record(val instance: Long,    // instance id
-                 val label: Double,     // label
-                 val features: Vector,  // features
-                 val scanId: Int,       // the scan id for multi-scan
-                 val forestId: Int,     // forest id
+    class Record(val instance: Long, // instance id
+                 val label: Double, // label
+                 val features: Vector, // features
+                 val scanId: Int, // the scan id for multi-scan
+                 val forestId: Int, // forest id
                  val winId: Long) extends Serializable // window id
 
     val concatData = unionSet.select(
@@ -288,15 +296,16 @@ private[spark] object GCForestImpl extends Logging {
   }
 
   /**
-    * concat inputs of Cascade Forest with prediction
-    * @param feature input features
-    * @param predict prediction features
-    * @return
-    */
+   * concat inputs of Cascade Forest with prediction
+   *
+   * @param feature input features
+   * @param predict prediction features
+   * @return
+   */
   def mergeFeatureAndPredict(
-      feature: Dataset[_],
-      predict: Dataset[_],
-      strategy: GCForestStrategy): DataFrame = {
+                              feature: Dataset[_],
+                              predict: Dataset[_],
+                              strategy: GCForestStrategy): DataFrame = {
     val vectorMerge = udf { (v1: Vector, v2: Vector) =>
       new DenseVector(v1.toArray.union(v2.toArray))
     }
@@ -305,7 +314,7 @@ private[spark] object GCForestImpl extends Logging {
       feature.join(
         // join (predict feature col to predictionCol)
         predict.withColumnRenamed(strategy.featuresCol, strategy.predictionCol),
-        Seq(strategy.instanceCol)  // join on instanceCol
+        Seq(strategy.instanceCol) // join on instanceCol
         // add a featureCol with featureCol + predictionCol
       ).withColumn(strategy.featuresCol, vectorMerge(col(strategy.featuresCol),
         col(strategy.predictionCol))
@@ -319,11 +328,11 @@ private[spark] object GCForestImpl extends Logging {
   private def getNowTime = dateFormat.format(new Date())
 
   /**
-    *  Multi-Grained Scanning
-    */
+   * Multi-Grained Scanning
+   */
   def multi_grain_Scan(
-      dataset: Dataset[_],
-      strategy: GCForestStrategy): (DataFrame, Array[MultiGrainedScanModel]) = {
+                        dataset: Dataset[_],
+                        strategy: GCForestStrategy): (DataFrame, Array[MultiGrainedScanModel]) = {
 
     require(dataset != null, "Null dataset need not to scan")
     // scalastyle:off println
@@ -382,8 +391,8 @@ private[spark] object GCForestImpl extends Logging {
   }
 
   def train(
-      input: Dataset[_],
-      strategy: GCForestStrategy): GCForestClassificationModel = {
+             input: Dataset[_],
+             strategy: GCForestStrategy): GCForestClassificationModel = {
     val numClasses: Int = strategy.classNum
     val erfModels = ArrayBuffer[Array[RandomForestClassificationModel]]()
     val n_train = input.count()
@@ -413,12 +422,12 @@ private[spark] object GCForestImpl extends Logging {
       println(s"[$getNowTime] Training Cascade Forest Layer $layer_id")
 
       val randomForests = (
-        Range(0, 4).map ( it =>
+        Range(0, 4).map(it =>
           genRFClassifier("rfc", strategy, isScan = false, num = rng.nextInt + it))
-        ++
-        Range(4, 8).map ( it =>
-          genRFClassifier("crfc", strategy, isScan = false, num = rng.nextInt + it))
-      ).toArray[RandomForestClassifier]
+          ++
+          Range(4, 8).map(it =>
+            genRFClassifier("crfc", strategy, isScan = false, num = rng.nextInt + it))
+        ).toArray[RandomForestClassifier]
       assert(randomForests.length == 8, "random Forests inValid!")
       // scanFeatures_*: (instanceId, label, features)
       val training = mergeFeatureAndPredict(scanFeature_train, lastPrediction, strategy)
@@ -428,9 +437,9 @@ private[spark] object GCForestImpl extends Logging {
 
       println(s"[$getNowTime] Training Set = ($n_train, $features_dim)")
 
-      var ensemblePredict: DataFrame = null  // closure need
+      var ensemblePredict: DataFrame = null // closure need
 
-      var layer_train_metric: Accuracy = new Accuracy(0, 0)  // closure need
+      var layer_train_metric: Accuracy = new Accuracy(0, 0) // closure need
 
       println(s"[$getNowTime] Forests fitting and transforming ......")
 
@@ -510,12 +519,12 @@ private[spark] object GCForestImpl extends Logging {
   }
 
   /**
-    *  Train a Cascade Forest
-    */
+   * Train a Cascade Forest
+   */
   private def trainWithValidation(
-              input: Dataset[_],
-              validationInput: Dataset[_],
-              strategy: GCForestStrategy): GCForestClassificationModel = {
+                                   input: Dataset[_],
+                                   validationInput: Dataset[_],
+                                   strategy: GCForestStrategy): GCForestClassificationModel = {
     val timer = new TimeTracker()
     timer.start("total")
     // scalastyle:off println
@@ -555,11 +564,11 @@ private[spark] object GCForestImpl extends Logging {
     var lastPrediction: DataFrame = null
     var lastPrediction_test: DataFrame = null
     val acc_list = Array(ArrayBuffer[Double](), ArrayBuffer[Double]())
-    var ensemblePredict: DataFrame = null  // closure need
-    var ensemblePredict_test: DataFrame = null  // closure need
+    var ensemblePredict: DataFrame = null // closure need
+    var ensemblePredict_test: DataFrame = null // closure need
 
-    var layer_train_metric: Accuracy = new Accuracy(0, 0)  // closure need
-    var layer_test_metric: Accuracy = new Accuracy(0, 0)  // closure need
+    var layer_train_metric: Accuracy = new Accuracy(0, 0) // closure need
+    var layer_test_metric: Accuracy = new Accuracy(0, 0) // closure need
 
     // Init classifiers
     val maxIteration = strategy.maxIteration
@@ -571,8 +580,8 @@ private[spark] object GCForestImpl extends Logging {
     if (strategy.idebug) println(s"[$getNowTime] timer.stop(init)")
 
     while (!reachMaxLayer) {
-//      println("Sleep 30 seconds ......")
-//      Thread.sleep(30 * 1000)
+      //      println("Sleep 30 seconds ......")
+      //      Thread.sleep(30 * 1000)
       if (strategy.idebug)
         println(s"sc.defaultParallelism = ${sc.defaultParallelism}")
 
@@ -581,9 +590,9 @@ private[spark] object GCForestImpl extends Logging {
       println(s"[$getNowTime] Training Cascade Forest Layer $layer_id")
 
       val randomForests = (
-        Range(0, strategy.rfNum).map ( _ => "rfc" )
-        ++
-        Range(strategy.rfNum, strategy.rfNum + strategy.crfNum).map ( _ => "crfccrfc" )
+        Range(0, strategy.rfNum).map(_ => "rfc")
+          ++
+          Range(strategy.rfNum, strategy.rfNum + strategy.crfNum).map(_ => "crfc")
         ).toArray[String]
       assert(randomForests.length == strategy.rfNum + strategy.crfNum, "random Forests inValid!")
       // scanFeatures_*: (instanceId, label, features)
@@ -606,13 +615,13 @@ private[spark] object GCForestImpl extends Logging {
       if (strategy.idebug) println(s"[$getNowTime]" +
         s" timer.stop(merge to produce training, testing and persist)")
 
-      val features_dim = training.first().mkString.split(",").length  // action, get training truly
+      val features_dim = training.first().mkString.split(",").length // action, get training truly
 
       println(s"[$getNowTime] Training Set = ($n_train, $features_dim), " +
         s"Testing Set = ($n_test, $features_dim)")
 
-//      if (lastPrediction != null) lastPrediction.unpersist(blocking = false)
-//      if (lastPrediction_test != null) lastPrediction_test.unpersist(blocking = false)
+      //      if (lastPrediction != null) lastPrediction.unpersist(blocking = false)
+      //      if (lastPrediction_test != null) lastPrediction_test.unpersist(blocking = false)
 
       ensemblePredict = null
       ensemblePredict_test = null
