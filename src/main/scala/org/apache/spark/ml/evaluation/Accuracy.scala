@@ -4,10 +4,10 @@
 
 package org.apache.spark.ml.evaluation
 
-class Accuracy(
+class Accuracy (
       private var rightCount: Double,
       private var totalCount: Double)
-  extends Metric {
+  extends Metric{
 
   def getAccuracy: Double = rightCount / (if (totalCount <= 0) 1.0 else totalCount)
 

@@ -19,6 +19,7 @@ object GCForestSequence {
       .builder()
       .appName(this.getClass.getSimpleName)
       .master("local[*]")
+      .config("spark.serializer","org.apache.spark.serializer.KryoSerializer")
       .getOrCreate()
 
     val parallelism = Engine.getParallelism(spark.sparkContext)

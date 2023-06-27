@@ -2,9 +2,9 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-!**/models/
-!**/checkpoint/
-!**/.idea/
+models/
+checkpoint/
+.idea/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

@@ -3,25 +3,26 @@
  */
 package org.apache.spark.ml.tree.impl
 
-import java.text.SimpleDateFormat
-import java.util.Date
-import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.Helper.{UserDefinedFunctions => UDF}
 import org.apache.spark.ml.classification._
 import org.apache.spark.ml.evaluation.{Accuracy, Metric, gcForestEvaluator}
-import org.apache.spark.ml.linalg.{DenseMatrix, DenseVector, Vector, VectorUDT}
+import org.apache.spark.ml.linalg.{DenseVector, Vector, VectorUDT}
 import org.apache.spark.ml.tree.configuration.GCForestStrategy
 import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.apache.spark.sql.functions.{col, lit, udf}
 import org.apache.spark.sql.types.{DoubleType, LongType, StructField, StructType}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.util.SizeEstimator
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
-private[spark] object GCForestImpl extends Logging {
+
+private[spark] object GCForestImplBackUp extends Logging {
 
   def run(
            input: Dataset[_],
@@ -632,36 +633,13 @@ private[spark] object GCForestImpl extends Logging {
       println(s"[$getNowTime] Forests fitting and transforming ......")
       timer.start("randomForests training")
       if (strategy.idebug) println(s"[$getNowTime] timer.start(randomForests training)")
-
-//      strategy、training、testing、layer_id、ensemblePredict、ensemblePredict_test、predict、predict_test、layer_train_metric、layer_test_metric
-      val bstrategy = sc.broadcast(strategy)
-      val btraining = sc.broadcast(training)
-      val btesting = sc.broadcast(testing)
-      val blayer_id = sc.broadcast(layer_id)
-//      val bensemblePredict = sc.broadcast(ensemblePredict)
-//      val bensemblePredict_test = sc.broadcast(ensemblePredict_test)
-//      val blayer_train_metric = sc.broadcast(layer_train_metric)
-//      val blayer_test_metric = sc.broadcast(layer_test_metric)
-
-      val transformed = sc.parallelize(randomForests, sc.defaultParallelism).zipWithIndex.map { case (rf_type, it) =>
+      erfModels ++= randomForests.zipWithIndex.map { case (rf_type, it) =>
         timer.start("cvClassVectorGeneration")
-//        使用广播传递参数
-
-        val strategy = bstrategy.value
-        val training = btraining.value
-        val testing = btesting.value
-        val layer_id = blayer_id.value
-
-//        var ensemblePredict = bensemblePredict.value
-//        var ensemblePredict_test = bensemblePredict_test.value
-//        var layer_train_metric = blayer_train_metric.value
-//        var layer_test_metric = blayer_test_metric.value
-
         if (strategy.idebug) println(s"[$getNowTime] timer.start(cvClassVectorGeneration)")
 
         val transformed = cvClassVectorGeneratorWithValidation(
           training, testing, rf_type, strategy.numFolds, strategy.seed, timer, strategy,
-          isScan = false, layer_id, it.toInt)
+          isScan = false, layer_id, it)
 
         timer.stop("cvClassVectorGeneration")
         if (strategy.idebug) println(s"[$getNowTime] timer.stop(cvClassVectorGeneration)")
@@ -676,37 +654,24 @@ private[spark] object GCForestImpl extends Logging {
           .withColumn(strategy.forestIdCol, lit(it))
           .select(strategy.instanceCol, strategy.featuresCol, strategy.forestIdCol)
 
-//        ensemblePredict =
-//          if (ensemblePredict == null) predict else ensemblePredict.union(predict)
-//        ensemblePredict_test =
-//          if (ensemblePredict_test == null) predict_test else ensemblePredict_test
-//            .union(predict_test)
+        ensemblePredict =
+          if (ensemblePredict == null) predict else ensemblePredict.union(predict)
+        ensemblePredict_test =
+          if (ensemblePredict_test == null) predict_test else ensemblePredict_test
+            .union(predict_test)
         timer.stop("add forestIdCol and Union")
         if (strategy.idebug) println(s"[$getNowTime] timer.stop(add forestIdCol and Union)")
 
-//        layer_train_metric = layer_train_metric + transformed._3
-//        layer_test_metric = layer_test_metric + transformed._4
-
-        //更新广播值
+        layer_train_metric = layer_train_metric + transformed._3
+        layer_test_metric = layer_test_metric + transformed._4
 
         println(s"[$getNowTime] [Estimator Summary] " +
           s"layer [$layer_id] - estimator [$it] Train.predict = ${transformed._3}")
         println(s"[$getNowTime] [Estimator Summary] " +
           s"layer [$layer_id] - estimator [$it]  Test.predict = ${transformed._4}")
 
-        (predict, predict_test, transformed._3, transformed._4, transformed._5)
-      }.collect()
-//      var erfModel = Array[String]()
-      transformed.foreach { x =>
-
-        ensemblePredict = if (ensemblePredict == null) x._1 else ensemblePredict.union(x._1)
-        ensemblePredict_test = if (ensemblePredict_test == null) x._2 else ensemblePredict_test.union(x._2)
-        layer_train_metric = layer_train_metric + x._3
-        layer_test_metric = layer_test_metric + x._4
-        erfModels.append(x._5)
+        transformed._5
       }
-//      erfModels ++= erfModel
-
       timer.stop("randomForests training")
 
       training.unpersist(blocking = true)

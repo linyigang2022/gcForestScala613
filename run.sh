@@ -86,13 +86,18 @@ spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence --con
 
 spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence --jars gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar
 
-spark-submit --master yarn \
+spark-submit --master local[*] \
   --class examples.UCI_adult.GCForestSequence \
-  --driver-class-path gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar:path/to/your-dependency.jar\
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
   --train linyigang/data/uci_adult/adult.data \
   --test linyigang/data/uci_adult/adult.test \
-  --features linyigang/data/uci_adult/features
+  --features linyigang/data/uci_adult/features \
+  --casTreeNum 10
 
 
 spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar --train ./uci_adult/adult.data --test ./uci_adult/adult.test --features ./uci_adult/features
+#line 635 erfModels ++= randomForests.zipWithIndex.map { case (rf_type, it) =>
+# layer 1
+#rfn crfn
+# 3+3 map 368.546 s
+#3+3 foreach
