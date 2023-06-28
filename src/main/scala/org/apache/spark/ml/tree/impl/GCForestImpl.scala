@@ -217,7 +217,7 @@ private[spark] object GCForestImpl extends Logging {
         else out_test.join(test_result, Seq(strategy.instanceCol, strategy.labelCol))
         val path = s"${strategy.modelPath}/layer-$layer_id-" +
           s"est-$estimator_id-$numFolds-folds-$splitIndex-$rfc_class"
-        model.write.overwrite().save(path)
+//        model.write.overwrite().save(path)
         path
     }
     timer.stop("Kfold split and fit")

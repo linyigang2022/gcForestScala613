@@ -6,7 +6,8 @@ package org.apache.spark.ml.classification
 
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.tree.impl.CompletelyRandomForestImpl
-import org.apache.spark.ml.util.{Instrumentation1 => Instrumentation, _}
+import org.apache.spark.ml.util.Instrumentation.instrumented
+import org.apache.spark.ml.util._
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
@@ -17,7 +18,7 @@ class CompletelyRandomForestClassifier(override val uid: String)
 
   def this() = this(Identifiable.randomUID("crfc"))
 
-  override protected def train(dataset: Dataset[_]): RandomForestClassificationModel = {
+  override protected def train(dataset: Dataset[_]): RandomForestClassificationModel = instrumented { instr =>
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
     val numClasses: Int = getNumClasses(dataset)
@@ -32,8 +33,10 @@ class CompletelyRandomForestClassifier(override val uid: String)
     val strategy =
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
 
-    val instr = Instrumentation.create(this, oldDataset)
-    instr.logParams(params: _*)
+//    instr.logParams(params: _*)
+    instr.logParams(this, labelCol, featuresCol, predictionCol, probabilityCol, rawPredictionCol,
+      impurity, numTrees, featureSubsetStrategy, maxDepth, maxBins, maxMemoryInMB, minInfoGain,
+      minInstancesPerNode, seed, subsamplingRate, thresholds, cacheNodeIds, checkpointInterval)
 
     println("CompletelyRandomForestImplV0")
     val trees = CompletelyRandomForestImpl
@@ -42,7 +45,7 @@ class CompletelyRandomForestClassifier(override val uid: String)
 
     val numFeatures = oldDataset.first().features.size
     val m = new RandomForestClassificationModel(trees, numFeatures, numClasses)
-    instr.logSuccess(m)
+//    instr.logSuccess(m)
     m
   }
 }

@@ -96,7 +96,7 @@ class FeatureParser(row: String) extends Serializable {
   private val name_to_len = if (f_type == "categorical") {
     val f_names = Array("?") ++ desc.trim.split(",").map(str => str.trim)
 //    println(f_names.mkString("-"))
-    println(f_names.size)
+//    println(f_names.size)
     f_names.zipWithIndex.map { case(cate_name, idx) =>
       cate_name -> idx
     }.toMap

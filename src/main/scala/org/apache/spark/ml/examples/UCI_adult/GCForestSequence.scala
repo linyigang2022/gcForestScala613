@@ -49,6 +49,7 @@ object GCForestSequence {
       if (param.idebug) println(s"Estimate trainset %.1f M,".format(SizeEstimator.estimate(train) / 1048576.0) +
         s" testset: %.1f M".format(SizeEstimator.estimate(test) / 1048576.0))
 
+
       val gcForest = new GCForestClassifier()
         .setModelPath(param.model)
         .setDataSize(param.dataSize)
