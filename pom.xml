@@ -1,69 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ~ Licensed to the Apache Software Foundation (ASF) under one or more
-  ~ contributor license agreements.  See the NOTICE file distributed with
-  ~ this work for additional information regarding copyright ownership.
-  ~ The ASF licenses this file to You under the Apache License, Version 2.0
-  ~ (the "License"); you may not use this file except in compliance with
-  ~ the License.  You may obtain a copy of the License at
-  ~
-  ~    http://www.apache.org/licenses/LICENSE-2.0
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software
-  ~ distributed under the License is distributed on an "AS IS" BASIS,
-  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  ~ See the License for the specific language governing permissions and
-  ~ limitations under the License.
-  -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.apache.spark</groupId>
-    <artifactId>gcForestScala613</artifactId>
+    <groupId>gcForestOnSpark</groupId>
+    <artifactId>gcforest</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>Archetype - gcForestScala613</name>
     <url>http://maven.apache.org</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.tools.version>2.11</scala.tools.version>
-        <!--<scala.version>2.11.7</scala.version>-->
+        <scala.version>2.11.7</scala.version>
+        <scalatest.artifactId>2.11</scalatest.artifactId>
+        <scalatest.version>2.2.6</scalatest.version>
         <spark.version>2.4.0</spark.version>
-        <!--以下是官方examples的properties-->
-        <scala.version>2.11.12</scala.version>
-        <scala.binary.version>2.11</scala.binary.version>
-        <sbt.project.name>examples</sbt.project.name>
-        <build.testJarPhase>none</build.testJarPhase>
-        <build.copyDependenciesPhase>package</build.copyDependenciesPhase>
-        <hadoop.deps.scope>provided</hadoop.deps.scope>
-        <parquet.deps.scope>provided</parquet.deps.scope>
-        <spark.scope>compile</spark.scope>
+        <spark.mllib.version>2.1.2</spark.mllib.version>
+        <maven-assembly-plugin.version>2.4</maven-assembly-plugin.version>
+        <spark-scope>provided</spark-scope>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>http://repo1.maven.org/maven2</url>
+            <layout>default</layout>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <dependencies>
-        <!-- Prevent our dummy JAR from being included in Spark distributions or uploaded to YARN -->
         <dependency>
-            <groupId>org.spark-project.spark</groupId>
-            <artifactId>unused</artifactId>
-            <version>1.0.0</version>
-            <scope>compile</scope>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-core_2.11</artifactId>
+            <version>${spark.version}</version>
+            <scope>${spark-scope}</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.binary.version}</artifactId>
+            <artifactId>spark-sql_2.11</artifactId>
             <version>${spark.version}</version>
-            <scope>${spark.scope}</scope>
+            <scope>${spark-scope}</scope>
         </dependency>
-
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-mllib_${scala.binary.version}</artifactId>
+            <artifactId>spark-mllib_2.11</artifactId>
             <version>${spark.version}</version>
-            <scope>${spark.scope}</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-core_2.12</artifactId>
+                </exclusion>
+                <!-- 这里添加要排除的其他依赖项 -->
+            </exclusions>
+            <scope>${spark-scope}</scope>
         </dependency>
-
-
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
@@ -71,11 +66,35 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>com.github.scopt</groupId>
-            <artifactId>scopt_${scala.binary.version}</artifactId>
-            <version>3.7.0</version>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-reflect</artifactId>
+            <version>${scala.version}</version>
+            <scope>${spark-scope}</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-compiler</artifactId>
+            <version>${scala.version}</version>
+            <scope>compile</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scalatest.artifactId}</artifactId>
+            <version>${scalatest.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.scopt</groupId>
+            <artifactId>scopt_${scala.tools.version}</artifactId>
+            <version>3.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.8.1</version>
+            <scope>test</scope>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/net.java.dev.jna/jna -->
         <dependency>
             <groupId>net.java.dev.jna</groupId>
@@ -85,70 +104,66 @@
     </dependencies>
 
     <build>
-        <outputDirectory>target/scala-${scala.binary.version}/classes</outputDirectory>
-        <testOutputDirectory>target/scala-${scala.binary.version}/test-classes</testOutputDirectory>
         <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
                 <version>${scala.tools.version}</version>
-                <!--<executions>-->
-                <!--    <execution>-->
-                <!--        <goals>-->
-                <!--            <goal>compile</goal>-->
-                <!--            <goal>testCompile</goal>-->
-                <!--        </goals>-->
-                <!--    </execution>-->
-                <!--</executions>-->
-                <!--<configuration>-->
-                <!--    <scalaVersion>2.11.12</scalaVersion>-->
-                <!--    <args>-->
-                <!--        <arg>-target:jvm-1.8</arg>-->
-                <!--    </args>-->
-                <!--</configuration>-->
             </plugin>
-
-            <!-- Maven、Scala混合插件 -->
+            <!-- disable surefire -->
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.7</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- see http://davidb.github.com/scala-maven-plugin -->
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-install-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <outputDirectory>${jars.target.dir}</outputDirectory>
-                </configuration>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <scalaVersion>${scala.version}</scalaVersion>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
+        <!--<resources>-->
+        <!--<resource>-->
+        <!--<targetPath>lib/</targetPath>-->
+        <!--<directory>lib/</directory>-->
+        <!--<includes>-->
+        <!--<include>spark-mllib_2.11-2.2.0.jar</include>-->
+        <!--<include>breeze_2.11-0.13.1.jar</include>-->
+        <!--</includes>-->
+        <!--</resource>-->
+        <!--</resources>-->
     </build>
-    <!--<profiles>-->
-    <!--  <profile>-->
-    <!--    <id>kinesis-asl</id>-->
-    <!--    <dependencies>-->
-    <!--      <dependency>-->
-    <!--        <groupId>org.apache.spark</groupId>-->
-    <!--        <artifactId>spark-streaming-kinesis-asl_${scala.binary.version}</artifactId>-->
-    <!--        <version>${spark.version}</version>-->
-    <!--        <scope>provided</scope>-->
-    <!--      </dependency>-->
-    <!--    </dependencies>-->
-    <!--  </profile>-->
-    <!--</profiles>-->
-</project>
 
+</project>
