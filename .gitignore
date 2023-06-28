@@ -5,6 +5,8 @@ target/
 models/
 checkpoint/
 .idea/
+!pom.xml
+!run.sh
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
