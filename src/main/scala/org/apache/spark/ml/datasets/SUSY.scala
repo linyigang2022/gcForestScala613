@@ -14,7 +14,7 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 //[1 0 0]
 //[0 1 0]
 //[0 0 1]
-class UCI_adult extends BaseDatasets {
+class SUSY extends BaseDatasets {
   /**
     * Load UCI ADULT data, by sparkSession, phase(or file path) and cate_as_onehot
     *
@@ -57,9 +57,9 @@ class UCI_adult extends BaseDatasets {
       .zipWithIndex.map { case (row, idx) =>
       val line = row.getAs[String]("value")
       val splits = line.split(",")
-      require(splits.length == 15, s"row $idx: $line has no 15 features, length: ${row.length}")
-      val label = if (splits(14).contains("<=50K")) 0.0d else 1.0d
-      val data = splits.dropRight(1).zipWithIndex.map { case (feature, indx) =>
+      require(splits.length == 19, s"row $idx: $line has no 19 features, length: ${splits.length}")
+      val label = splits(0).toDouble
+      val data = splits.drop(1).zipWithIndex.map { case (feature, indx) =>
         f_parsers_array(indx).get_data(feature.trim)
       }.reduce((l, r) => l ++ r)
 
@@ -80,4 +80,3 @@ class UCI_adult extends BaseDatasets {
       .withColumn("features", arr2vec(col("features")))
   }
 }
-

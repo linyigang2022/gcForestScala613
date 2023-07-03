@@ -1,16 +1,16 @@
 /*
  * Copyright 2017 Authors NJU PASA BigData Laboratory. Qiu Hu. huqiu00#163.com
  */
-package org.apache.spark.ml.examples.UCI_adult
+package org.apache.spark.ml.examples.HIGGS
 
 import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier}
-import org.apache.spark.ml.datasets.UCI_adult
+import org.apache.spark.ml.datasets.HIGGS
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
 import org.apache.spark.ml.util.engine.Engine
 
 
-object GCForestSequence {
+object GCForestHIGGS {
   def main(args: Array[String]): Unit = {
 
     import Utils._
@@ -18,15 +18,13 @@ object GCForestSequence {
     val spark = SparkSession
       .builder()
       .appName(this.getClass.getSimpleName)
-      .master("local[*]")
+//      .master("local[*]")
+      .config("spark.serializer","org.apache.spark.serializer.KryoSerializer")
       .getOrCreate()
 
     val parallelism = Engine.getParallelism(spark.sparkContext)
     println(s"Total Cores is $parallelism")
-    //    spark.conf.set("spark.default.parallelism", parallelism)
-    //    spark.conf.set("spark.locality.wait.node", 0)
     spark.conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-//    spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RandomForestCARTClassifier]))
     spark.sparkContext.getConf.registerKryoClasses(Array(classOf[RandomForestClassifier]))
 
     trainParser.parse(args, TrainParams()).map(param => {
@@ -41,10 +39,11 @@ object GCForestSequence {
         case _ => parallelism
       }
 
-      val train = new UCI_adult().load_data(spark, param.trainFile, param.featuresFile, 1,
+      val data = new HIGGS().load_data(spark, param.trainFile, param.featuresFile, 1,
         getParallelism)
-      val test = new UCI_adult().load_data(spark, param.testFile, param.featuresFile, 1,
-        getParallelism)
+      //      val test = new UCI_adult().load_data(spark, param.testFile, param.featuresFile, 1,
+      //        getParallelism)
+      val Array(train, test) = data.randomSplit(Array(0.7, 0.3))
       if (param.idebug) println(s"Estimate trainset %.1f M,".format(SizeEstimator.estimate(train) / 1048576.0) +
         s" testset: %.1f M".format(SizeEstimator.estimate(test) / 1048576.0))
 

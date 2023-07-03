@@ -1,7 +1,5 @@
 package org.apache.spark.ml.tmp
 
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.{GCForestClassificationModel, GCForestClassifier, RandomForestClassifier}
 import org.apache.spark.ml.datasets.UCI_adult
 import org.apache.spark.ml.examples.UCI_adult.Utils
@@ -16,11 +14,11 @@ object ParallelGCForest {
 
 
   def main(args: Array[String]): Unit = {
-    // 这一段是无法运行的，摘自 https://blog.csdn.net/u010454030/article/details/74353886
 
-    val sparkConf = new SparkConf()
-    sparkConf.setAppName("multi task submit ")
-    sparkConf.setMaster("local[*]")
+
+//    val sparkConf = new SparkConf()
+//    sparkConf.setAppName("multi task submit ")
+//    sparkConf.setMaster("local[*]")
     //实例化spark context
 
 
@@ -38,7 +36,7 @@ object ParallelGCForest {
     val spark = SparkSession
       .builder()
       .appName(this.getClass.getSimpleName)
-      .master("local[*]")
+//      .master("local[*]")
       .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .getOrCreate()
 
@@ -60,7 +58,6 @@ object ParallelGCForest {
         //        }
         new GCForestTask(args, spark, task_paths(i))
       )
-
       list :+= task //添加集合里面
     }
     executors.shutdown()

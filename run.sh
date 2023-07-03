@@ -102,3 +102,18 @@ spark-submit --master local[*] --class examples.UCI_adult.GCForestSequence gcfor
 # 3+3 map 368.546 s
 #3+3 foreach
 #33
+
+#
+spark-submit --master yarn \
+  --class   org.apache.spark.ml.tmp.ParallelGCForest\
+  --executor-cores 2 \
+  --num-executors 16 \
+  --conf spark.dynamicAllocation.minExecutors=16 \
+  --conf spark.dynamicAllocation.maxExecutors=16 \
+  gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --train linyigang/data/uci_adult/adult.data \
+  --test linyigang/data/uci_adult/adult.test \
+  --features linyigang/data/uci_adult/features \
+  --casTreeNum 5 \
+  --rfNum 1 \
+  --crfNum 1

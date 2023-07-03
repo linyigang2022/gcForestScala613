@@ -14,15 +14,15 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 //[1 0 0]
 //[0 1 0]
 //[0 0 1]
-class UCI_adult extends BaseDatasets {
+class HIGGS extends BaseDatasets {
   /**
-    * Load UCI ADULT data, by sparkSession, phase(or file path) and cate_as_onehot
-    *
-    * @param spark SparkSession to load
-    * @param phase which kind of data to load, "train" or "test", or provide file path directly
-    * @param cate_as_onehot convert categorical data to one-hot format
-    * @return loaded DataFrame
-    */
+   * Load UCI ADULT data, by sparkSession, phase(or file path) and cate_as_onehot
+   *
+   * @param spark SparkSession to load
+   * @param phase which kind of data to load, "train" or "test", or provide file path directly
+   * @param cate_as_onehot convert categorical data to one-hot format
+   * @return loaded DataFrame
+   */
   def load_data(spark: SparkSession,
                 phase: String,
                 featuresPath: String,
@@ -37,13 +37,13 @@ class UCI_adult extends BaseDatasets {
     println(data_path)
     val raw = spark.read.text(data_path)
 
-//    val features_path = if (featuresPath == "") "data/uci_adult/features" else featuresPath
+    //    val features_path = if (featuresPath == "") "data/uci_adult/features" else featuresPath
     val features_path = if (featuresPath == "") "linyigang/data/uci_adult/features" else featuresPath
 
     val fts_file = spark.read.text(features_path)
     val f_parsers = fts_file.rdd.filter(row => row.length > 0).map { row =>
       val line = row.getAs[String]("value")
-//      println(s"line:$line")
+      //      println(s"line:$line")
       new FeatureParser(line)
     }
 
@@ -57,13 +57,13 @@ class UCI_adult extends BaseDatasets {
       .zipWithIndex.map { case (row, idx) =>
       val line = row.getAs[String]("value")
       val splits = line.split(",")
-      require(splits.length == 15, s"row $idx: $line has no 15 features, length: ${row.length}")
-      val label = if (splits(14).contains("<=50K")) 0.0d else 1.0d
-      val data = splits.dropRight(1).zipWithIndex.map { case (feature, indx) =>
+      require(splits.length == 29, s"row $idx: $line has no 29 features, length: ${splits.length}")
+      val label = splits(0).toDouble
+      val data = splits.drop(1).zipWithIndex.map { case (feature, indx) =>
         f_parsers_array(indx).get_data(feature.trim)
       }.reduce((l, r) => l ++ r)
 
-//      println(s"before require, data:${data.mkString("_")}")
+      //      println(s"before require, data:${data.mkString("_")}")
       require(data.length == total_dims,
         "Total dims %d not equal to data.length %d".format(total_dims, data.length))
       Row.fromSeq(Seq[Any](label, data, idx))
@@ -80,4 +80,3 @@ class UCI_adult extends BaseDatasets {
       .withColumn("features", arr2vec(col("features")))
   }
 }
-
