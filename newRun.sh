@@ -37,7 +37,7 @@ spark-submit --master yarn \
   --class org.apache.spark.ml.examples.Covertype.GCForestCovertype \
   --executor-cores 2 \
   --num-executors 16 \
-  --driver-memory 10G \
+  --driver-memory 20G \
   --executor-memory 20G \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
@@ -45,9 +45,9 @@ spark-submit --master yarn \
   --train linyigang/data/covertype/covtype.data \
   --test linyigang/data/covertype/covtype.test \
   --features linyigang/data/covertype/features \
-  --casTreeNum 100 \
-  --rfNum 1 \
-  --crfNum 1
+  --casTreeNum 500 \
+  --rfNum 4 \
+  --crfNum 4
 
 # 在服务器以yarn模式运行1个gcForest，数据集为watch_acc;
 # 需要设置内存，否则OOM；样本多时需要让executor-memory增大，否则无法训练树；树多时要让driver-memory增大，否则无法收集森林。
@@ -75,7 +75,8 @@ spark-submit --master yarn \
 # 这个数据集已经无法在我自己的电脑跑起来了，OOM
 # 需要设置内存，否则OOM；样本多时需要让executor-memory增大，否则无法训练树；树多时要让driver-memory增大，否则无法收集森林。
 # 16*2 casTreeNum=2 一次rf训练（3叉验证的一次）196s 185s 166s，准确率 73.156% 73.275% 73.317%，一次完整三叉验证 训练准确率 73.249%，测试准确率 78.062%
-#                   一次crf训练（3叉验证的一次）196s 185s 166s，准确率 73.156% 73.275% 73.317%，一次完整三叉验证 训练准确率 ，测试准确率
+#                   一次crf训练（3叉验证的一次）131s 101s 166s，准确率 78.413% 78.339% 73.317%，一次完整三叉验证 训练准确率 78.306%，测试准确率 79.226%
+#                   第一层 耗时 1066.011s 训练准确率 75.864%，测试准确率 78.680%
 spark-submit --master yarn \
   --class org.apache.spark.ml.examples.SUSY.GCForestSUSY \
   --executor-cores 2 \
@@ -95,9 +96,9 @@ spark-submit --master yarn \
 # 在服务器以yarn模式运行1个gcForest，数据集为 HIGGS;
 # 这个数据集已经无法在我自己的电脑跑起来了，OOM
 # 需要设置内存，否则OOM；样本多时需要让executor-memory增大，否则无法训练树；树多时要让driver-memory增大，否则无法收集森林。
-# 16*2 casTreeNum=2 一次rf训练（3叉验证的一次）436s，准确率 64.873%
-#                   一次rf训练（3叉验证的一次）436s，准确率 64.873%
-#                   第一层耗时，训练准确率 ，测试准确率
+# 16*2 casTreeNum=2 一次rf训练（3叉验证的一次）436s 381s 381s，准确率 64.873% 64.842% 67.712%，一次完整的三叉验证 训练准确率 64.809%，测试准确率 70.845%
+#                   一次rf训练（3叉验证的一次）236s 188s 206s，准确率 66.326% 65.126% 65.495%，一次完整的三叉验证 训练准确率 65.649%，测试准确率 68.611%
+#                   第一层耗时 2415.189s，训练准确率 65.229%，测试准确率 69.728%
 spark-submit --master yarn \
   --class org.apache.spark.ml.examples.HIGGS.GCForestHIGGS \
   --executor-cores 2 \

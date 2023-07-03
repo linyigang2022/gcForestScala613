@@ -50,12 +50,6 @@ object ParallelGCForest {
     val executors = Executors.newFixedThreadPool(nums_threads).asInstanceOf[ThreadPoolExecutor]
     for (i <- 0 until nums_threads) {
       val task = executors.submit(
-        //        new Callable[String] {
-        //          override def call(): String = {
-        //            val count = sc.textFile(task_paths(i)).count() //获取统计文件数量
-        //            return task_paths(i) + " 文件数量： " + count
-        //          }
-        //        }
         new GCForestTask(args, spark, task_paths(i))
       )
       list :+= task //添加集合里面
