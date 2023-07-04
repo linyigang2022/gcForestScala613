@@ -1,4 +1,5 @@
-# 在服务器以yarn模式运行一个gcForest
+# 在服务器以yarn模式运行一个gcForest，数据集为uci_adult，更新之后，class不再是GCForestSequence，而是GCForestAdult，Sequence用来做多个数据集的统一入口，以后运行需要制定数据集，如下
+# --dataset uci_adult 或 covertype, watch_acc, susy, higgs
 spark-submit --master yarn \
   --class  org.apache.spark.ml.examples.UCI_adult.GCForestSequence \
   --executor-cores 2 \
@@ -6,6 +7,7 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --dataset uci_adult \
   --train linyigang/data/uci_adult/adult.data \
   --test linyigang/data/uci_adult/adult.test \
   --features linyigang/data/uci_adult/features \
@@ -21,6 +23,7 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --dataset uci_adult \
   --train linyigang/data/uci_adult/adult.data \
   --test linyigang/data/uci_adult/adult.test \
   --features linyigang/data/uci_adult/features \
@@ -42,12 +45,12 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --dataset covertype \
   --train linyigang/data/covertype/covtype.data \
-  --test linyigang/data/covertype/covtype.test \
   --features linyigang/data/covertype/features \
-  --casTreeNum 500 \
-  --rfNum 4 \
-  --crfNum 4
+  --casTreeNum 5 \
+  --rfNum 1 \
+  --crfNum 1
 
 # 在服务器以yarn模式运行1个gcForest，数据集为watch_acc;
 # 需要设置内存，否则OOM；样本多时需要让executor-memory增大，否则无法训练树；树多时要让driver-memory增大，否则无法收集森林。
@@ -64,8 +67,8 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --dataset watch_acc \
   --train linyigang/data/watch_acc/watch_acc.data \
-  --test linyigang/data/watch_acc/watch_acc.test \
   --features linyigang/data/watch_acc/features \
   --casTreeNum 5 \
   --rfNum 1 \
@@ -87,7 +90,7 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
   --train linyigang/data/susy/SUSY.data \
-  --test linyigang/data/susy/SUSY.test \
+  --dataset susy \
   --features linyigang/data/susy/features \
   --casTreeNum 2 \
   --rfNum 1 \
@@ -108,8 +111,8 @@ spark-submit --master yarn \
   --conf spark.dynamicAllocation.minExecutors=16 \
   --conf spark.dynamicAllocation.maxExecutors=16 \
   gcforest-1.0-SNAPSHOT-jar-with-dependencies.jar \
+  --dataset higgs \
   --train linyigang/data/higgs/HIGGS.csv \
-  --test linyigang/data/higgs/HIGGS.test \
   --features linyigang/data/higgs/features \
   --casTreeNum 2 \
   --rfNum 1 \

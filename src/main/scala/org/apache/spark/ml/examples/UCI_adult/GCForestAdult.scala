@@ -10,7 +10,7 @@ import org.apache.spark.util.SizeEstimator
 import org.apache.spark.ml.util.engine.Engine
 
 
-object GCForestSequence {
+object GCForestAdult {
   def main(args: Array[String]): Unit = {
 
     import Utils._

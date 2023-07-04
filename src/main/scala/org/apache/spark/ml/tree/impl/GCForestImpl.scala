@@ -580,8 +580,6 @@ private[spark] object GCForestImpl extends Logging {
     if (strategy.idebug) println(s"[$getNowTime] timer.stop(init)")
 
     while (!reachMaxLayer) {
-      //      println("Sleep 30 seconds ......")
-      //      Thread.sleep(30 * 1000)
       if (strategy.idebug)
         println(s"sc.defaultParallelism = ${sc.defaultParallelism}")
 
@@ -620,8 +618,6 @@ private[spark] object GCForestImpl extends Logging {
       println(s"[$getNowTime] Training Set = ($n_train, $features_dim), " +
         s"Testing Set = ($n_test, $features_dim)")
 
-      //      if (lastPrediction != null) lastPrediction.unpersist(blocking = false)
-      //      if (lastPrediction_test != null) lastPrediction_test.unpersist(blocking = false)
 
       ensemblePredict = null
       ensemblePredict_test = null
