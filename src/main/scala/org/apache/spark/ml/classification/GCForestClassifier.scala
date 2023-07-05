@@ -40,6 +40,7 @@ class GCForestClassifier(override val uid: String)
   override def setEarlyStoppingRounds(value: Int): this.type = set(earlyStoppingRounds, value)
 
   override def setIDebug(value: Boolean): GCForestClassifier.this.type = set(idebug, value)
+  override def setSubRFNum(value: Int): GCForestClassifier.this.type = set(subRFNum, value)
 
   override def setMaxDepth(value: Int): this.type = set(MaxDepth, value)
 
@@ -74,7 +75,8 @@ class GCForestClassifier(override val uid: String)
       $(MaxDepth), $(minInfoGain), $(MaxIteration), $(maxMemoryInMB),
       $(numFolds), $(earlyStoppingRounds),
       $(earlyStopByTest), $(dataStyle), $(seed), $(cacheNodeId),
-      $(windowCol), $(scanCol), $(forestIdCol), $(idebug))
+      $(windowCol), $(scanCol), $(forestIdCol), $(idebug),
+      $(subRFNum))
   }
 
   def getDefaultStrategy: GCForestStrategy = {
@@ -118,26 +120,42 @@ class GCForestClassifier(override val uid: String)
 
 private[ml] class GCForestClassificationModel(
                                                override val uid: String,
-                                               private val scanModel: Array[MultiGrainedScanModel],
                                                private val cascadeForest: Array[Array[RandomForestClassificationModel]],
                                                override val numClasses: Int)
   extends ProbabilisticClassificationModel[Vector, GCForestClassificationModel]
     with GCForestParams with MLWritable with Serializable {
 
-  def this(scanModel: Array[MultiGrainedScanModel],
+  def this(
            cascadeForest: Array[Array[RandomForestClassificationModel]],
            numClasses: Int) =
-    this(Identifiable.randomUID("gcfc"), scanModel, cascadeForest, numClasses)
+    this(Identifiable.randomUID("gcfc"), cascadeForest, numClasses)
 
-  val numScans: Int = scanModel.length
   val numCascades: Int = cascadeForest.length
 
-  def predictScanFeature(features: Vector): Vector = {
-    features
+
+//  override def predictRaw(features: Vector): Vector = features
+override def predictRaw(features: Vector): Vector = {
+//  todo lyg
+  var scanFeatures: Vector = null
+  if ($(dataStyle) == "Seq") {
+    scanFeatures = features
+  }
+  val avgPredict = Array.fill[Double](numClasses)(0d)
+  var lastPredict = Array[Double]()
+
+  cascadeForest.foreach { models =>
+    lastPredict = models.flatMap(
+      m => m.predictProbability(new DenseVector(features.toArray.union(lastPredict))).toArray
+    )
   }
 
-  override def predictRaw(features: Vector): Vector = features
+  lastPredict.indices.foreach { i =>
+    val classType = i % numClasses
+    avgPredict(classType) = avgPredict(classType) + lastPredict(i)
+  }
 
+  new DenseVector(avgPredict)
+}
   override protected def raw2probabilityInPlace(rawPrediction: Vector): Vector = {
     rawPrediction match {
       case dv: DenseVector =>
@@ -158,7 +176,7 @@ private[ml] class GCForestClassificationModel(
   }
 
   override def copy(extra: ParamMap): GCForestClassificationModel = {
-    copyValues(new GCForestClassificationModel(uid, scanModel, cascadeForest, numClasses), extra)
+    copyValues(new GCForestClassificationModel(uid, cascadeForest, numClasses), extra)
   }
 
   override def write: MLWriter =
@@ -179,24 +197,8 @@ object GCForestClassificationModel extends MLReadable[GCForestClassificationMode
 
       val gcMetadata: JObject = Map(
         "numClasses" -> instance.numClasses,
-        "numScans" -> instance.numScans,
         "numCascades" -> instance.numCascades)
       DefaultParamsWriter.saveMetadata(instance, path, sparkSession.sparkContext, Some(gcMetadata))
-
-      // scanModel
-      val scanPath = new Path(path, "scan").toString
-      instance.scanModel.zipWithIndex.foreach { case (model, index) =>
-        val modelPath = new Path(scanPath, index.toString).toString
-        val metadata: JObject = Map(
-          "windows" -> model.windows.toList
-        )
-        DefaultParamsWriter
-          .saveMetadata(model, modelPath, sparkSession.sparkContext, Some(metadata))
-        val rfModelPath = new Path(modelPath, "rf").toString
-        model.rfcModel.save(rfModelPath)
-        val crtfModelPath = new Path(modelPath, "crtf").toString
-        model.crfcModel.save(crtfModelPath)
-      }
 
       // CascadeForestModel
       val cascadePath = new Path(path, "cascade").toString
@@ -215,7 +217,6 @@ object GCForestClassificationModel extends MLReadable[GCForestClassificationMode
 
     /** Checked against metadata when loading model */
     private val className = classOf[GCForestClassificationModel].getName
-    val mgsClassName: String = classOf[MultiGrainedScanModel].getName
 
     override def load(path: String): GCForestClassificationModel = {
       implicit val format = DefaultFormats
@@ -226,17 +227,6 @@ object GCForestClassificationModel extends MLReadable[GCForestClassificationMode
       val numCascades = (gcMetadata.metadata \ "numCascades").extract[Int]
 
       val scanPath = new Path(path, "scan").toString
-      val scanModel = Range(0, numScans).map { index =>
-        val modelPath = new Path(scanPath, index.toString).toString
-        val scanMetadata = DefaultParamsReader
-          .loadMetadata(path, sparkSession.sparkContext, mgsClassName)
-        val windows = (scanMetadata.metadata \ "windows").extract[Array[Int]]
-        val rfPath = new Path(modelPath, "rf").toString
-        val rfModel = RandomForestClassificationModel.load(rfPath)
-        val crtfPath = new Path(modelPath, "crtf").toString
-        val crtfModel = RandomForestClassificationModel.load(crtfPath)
-        new MultiGrainedScanModel(windows, rfModel, crtfModel)
-      }.toArray
 
       val cascadePath = new Path(path, "cascade").toString
       val cascadeForest = Range(0, numCascades).map { level =>
@@ -248,25 +238,12 @@ object GCForestClassificationModel extends MLReadable[GCForestClassificationMode
       }.toArray
 
       val gcForestModel =
-        new GCForestClassificationModel(gcMetadata.uid, scanModel, cascadeForest, numClasses)
+        new GCForestClassificationModel(gcMetadata.uid, cascadeForest, numClasses)
 
       //      DefaultParamsReader.getAndSetParams(gcForestModel, gcMetadata)
       gcMetadata.getAndSetParams(gcForestModel)
       gcForestModel
     }
   }
-}
-
-class MultiGrainedScanModel(override val uid: String,
-                            val windows: Array[Int],
-                            val rfcModel: RandomForestClassificationModel,
-                            val crfcModel: RandomForestClassificationModel) extends Params {
-  def this(windows: Array[Int],
-           rfcModel: RandomForestClassificationModel,
-           crfcModel: RandomForestClassificationModel) =
-    this(Identifiable.randomUID("mgs"), windows, rfcModel, crfcModel)
-
-  override def copy(extra: ParamMap): Params =
-    copyValues(new MultiGrainedScanModel(uid, windows, rfcModel, crfcModel), extra)
 }
 

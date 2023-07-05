@@ -11,9 +11,9 @@ object Utils {
                           //              trainFile: String = "./data/uci_adult/adult.data",
                           //              testFile: String = "./data/uci_adult/adult_1000.test",
                           //              featuresFile: String = "./data/uci_adult/features",
-                          trainFile: String = "C:/dataset/covertype/covtype.data",
-                          testFile: String = "C:/dataset/covertype/covtype.test",
-                          featuresFile: String = "C:/dataset/covertype/features",
+                          trainFile: String = "C:/dataset/uci_adult/adult.data",
+                          testFile: String = "C:/dataset/uci_adult/adult.test",
+                          featuresFile: String = "C:/dataset/uci_adult/features",
                           model: String = "./models/uci_adult",
                           checkpointDir: String = "./checkpoint",
                           classNum: Int = 2,
@@ -51,7 +51,9 @@ object Utils {
                           featuresCol: String = "features",
                           labelCol: String = "label",
                           idebug: Boolean = false,
-                          dataset: String = "covertype")
+                          dataset: String = "uci_adult",
+                          subRFNum: Int = 3
+                        )
 
   val trainParser = new OptionParser[TrainParams]("GCForest On Spark - UCI ADULT Example") {
     head("Train Multi-grain Scan Cascade Forest for UCI ADULT")
@@ -150,6 +152,9 @@ object Utils {
     opt[String]("dataset")
       .text("the dataset you want to use, uci_adult, covertype, watch_acc, susy, higgs, default: uci_adult")
       .action((x, c) => c.copy(dataset = x))
+    opt[Int]("subRFNum")
+      .text("num of sub random forest, default: 2")
+      .action((x, c) => c.copy(subRFNum = x))
     // other parameters do not need to change
 
   }

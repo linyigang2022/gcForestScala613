@@ -166,7 +166,7 @@ private[spark] object GCForestImpl extends Logging {
                                             isScan: Boolean,
                                             layer_id: Int,
                                             estimator_id: Int):
-  (DataFrame, DataFrame, Metric, Metric, Array[String]) = {
+  (DataFrame, DataFrame, Metric, Metric, Array[RandomForestClassificationModel]) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
     var out_train: DataFrame = null // closure need
@@ -217,8 +217,8 @@ private[spark] object GCForestImpl extends Logging {
         else out_test.join(test_result, Seq(strategy.instanceCol, strategy.labelCol))
         val path = s"${strategy.modelPath}/layer-$layer_id-" +
           s"est-$estimator_id-$numFolds-folds-$splitIndex-$rfc_class"
-//        model.write.overwrite().save(path)
-        path
+        //        model.write.overwrite().save(path)
+        model
     }
     timer.stop("Kfold split and fit")
     if (strategy.idebug) println(s"[$getNowTime] timer.stop(Kfold split and fit)")
@@ -332,62 +332,23 @@ private[spark] object GCForestImpl extends Logging {
    */
   def multi_grain_Scan(
                         dataset: Dataset[_],
-                        strategy: GCForestStrategy): (DataFrame, Array[MultiGrainedScanModel]) = {
+                        strategy: GCForestStrategy): DataFrame = {
 
     require(dataset != null, "Null dataset need not to scan")
     // scalastyle:off println
     var scanFeature: DataFrame = null
-    val mgsModels = ArrayBuffer[MultiGrainedScanModel]()
     val rand = new Random()
     rand.setSeed(System.currentTimeMillis())
 
     println(s"[$getNowTime] Multi Grained Scanning begin!")
 
-    if (strategy.dataStyle == "Seq" && strategy.multiScanWindow.length > 0) {
-      val scanFeatures = ArrayBuffer[Dataset[_]]()
-      strategy.multiScanWindow.indices.foreach { i => // for each window
-        val windowSize = strategy.multiScanWindow(i)
-        val windowInstances = extractSequenceRDD(dataset, windowSize, strategy.dataSize,
-          strategy.featuresCol, strategy.winCol)
-
-        val rfc =
-          genRFClassifier("rfc", strategy, isScan = true, num = 0)
-        var (rfcFeature, _, rfcModel) =
-          cvClassVectorGenerator(windowInstances, rfc, strategy.numFolds, strategy.seed, strategy,
-            isScan = true, "Scan 1")
-        rfcFeature = rfcFeature
-          .withColumn(strategy.forestIdCol, lit(1))
-          .withColumn(strategy.scanCol, lit(i))
-
-        scanFeatures += rfcFeature
-
-        val crfc =
-          genRFClassifier("crfc", strategy, isScan = true, num = 1)
-        var (crfcFeature, _, crfcModel) =
-          cvClassVectorGenerator(windowInstances, crfc, strategy.numFolds, strategy.seed, strategy,
-            isScan = true, "Scan 2")
-        crfcFeature = crfcFeature
-          .withColumn(strategy.forestIdCol, lit(2))
-          .withColumn(strategy.scanCol, lit(i))
-        scanFeatures += crfcFeature
-
-        mgsModels += new MultiGrainedScanModel(Array(windowSize), rfcModel, crfcModel)
-      }
-      scanFeature = concatenate(strategy, scanFeatures.head, scanFeatures.tail: _*).cache()
-
-    } else if (strategy.multiScanWindow.length > 0) {
-      throw new UnsupportedOperationException(
-        s"The dataStyle: ${strategy.dataStyle} is unsupported!")
-    }
-
-    if (strategy.multiScanWindow.length == 0) {
-      println("return directly")
+    if (strategy.dataStyle == "Seq") {
       scanFeature = dataset.toDF()
     }
     // scanFeature: (instanceId, label, features)
     println(s"[$getNowTime] Multi Grained Scanning finished!")
     // scalastyle:on println
-    (scanFeature, mgsModels.toArray)
+    scanFeature
   }
 
   def train(
@@ -397,7 +358,7 @@ private[spark] object GCForestImpl extends Logging {
     val erfModels = ArrayBuffer[Array[RandomForestClassificationModel]]()
     val n_train = input.count()
 
-    val (scanFeature_train, mgsModels) = multi_grain_Scan(input, strategy)
+    val scanFeature_train = multi_grain_Scan(input, strategy)
 
     scanFeature_train.cache()
     // scalastyle:off println
@@ -515,7 +476,7 @@ private[spark] object GCForestImpl extends Logging {
 
     println(s"[$getNowTime] Cascade Forest Training Finished!")
     // scalastyle:on println
-    new GCForestClassificationModel(mgsModels, erfModels.toArray, numClasses)
+    new GCForestClassificationModel(erfModels.toArray, numClasses)
   }
 
   /**
@@ -529,17 +490,18 @@ private[spark] object GCForestImpl extends Logging {
     timer.start("total")
     // scalastyle:off println
     if (strategy.idebug) println(s"[$getNowTime] timer.start(total)")
-
     val numClasses: Int = strategy.classNum
     // TODO: better representation to model
-    val erfModels = ArrayBuffer[Array[String]]() // layer - (forest * fold)
+    val erfModels = ArrayBuffer[Array[RandomForestClassificationModel]]() // layer - (forest * fold)
     val n_train = input.count()
     val n_test = validationInput.count()
 
+
+
     timer.start("multi_grain_Scan for Train and Test")
     if (strategy.idebug) println(s"[$getNowTime] timer.start(multi_grain_Scan for Train and Test)")
-    val (scanFeature_train, mgsModels) = multi_grain_Scan(input, strategy)
-    val (scanFeature_test, mgsModels_test) = multi_grain_Scan(validationInput, strategy)
+    val scanFeature_train = multi_grain_Scan(input, strategy)
+    val scanFeature_test = multi_grain_Scan(validationInput, strategy)
     println(s"input:${input}")
     println(s"scanFeature_train:$scanFeature_train")
     timer.stop("multi_grain_Scan for Train and Test")
@@ -600,15 +562,10 @@ private[spark] object GCForestImpl extends Logging {
       }
       val training = mergeFeatureAndPredict(scanFeature_train, lastPrediction, strategy)
         .coalesce(sc.defaultParallelism)
-        .cache()
 
       val testing = mergeFeatureAndPredict(scanFeature_test, lastPrediction_test, strategy)
         .coalesce(sc.defaultParallelism)
-        .cache()
 
-      if (strategy.idebug) println(s"Estimate training: %.1f M,"
-        .format(SizeEstimator.estimate(training) / 1048576.0) +
-        s" testing: %.1f M".format(SizeEstimator.estimate(testing) / 1048576.0))
       timer.stop("merge to produce training, testing and persist")
       if (strategy.idebug) println(s"[$getNowTime]" +
         s" timer.stop(merge to produce training, testing and persist)")
@@ -624,16 +581,31 @@ private[spark] object GCForestImpl extends Logging {
 
       layer_train_metric.reset()
       layer_test_metric.reset()
+      // lyg
+      val weight = 1.0 / (strategy.rfNum + strategy.crfNum)
+      val weightArray = Array.fill[Double](strategy.subRFNum)(weight)
+      val sampleTraining = training.randomSplit(weightArray)
+      val sampleTesting = testing.randomSplit(weightArray)
+      println(s"子森林数量：${strategy.rfNum + strategy.crfNum}")
+      println(s"strategy.crfNum：${strategy.subRFNum}")
+      sampleTraining.foreach { training =>
+        training.cache()
+      }
+      sampleTesting.foreach { testing =>
+        testing.cache()
+      }
 
       println(s"[$getNowTime] Forests fitting and transforming ......")
       timer.start("randomForests training")
       if (strategy.idebug) println(s"[$getNowTime] timer.start(randomForests training)")
+
+
       erfModels ++= randomForests.zipWithIndex.map { case (rf_type, it) =>
         timer.start("cvClassVectorGeneration")
         if (strategy.idebug) println(s"[$getNowTime] timer.start(cvClassVectorGeneration)")
 
         val transformed = cvClassVectorGeneratorWithValidation(
-          training, testing, rf_type, strategy.numFolds, strategy.seed, timer, strategy,
+          sampleTesting(it), sampleTesting(it), rf_type, strategy.numFolds, strategy.seed, timer, strategy,
           isScan = false, layer_id, it)
 
         timer.stop("cvClassVectorGeneration")
@@ -669,8 +641,12 @@ private[spark] object GCForestImpl extends Logging {
       }
       timer.stop("randomForests training")
 
-      training.unpersist(blocking = true)
-      testing.unpersist(blocking = true)
+      sampleTraining.foreach{training=>
+        training.unpersist(blocking = true)
+      }
+      sampleTesting.foreach { testing =>
+        testing.unpersist(blocking = true)
+      }
 
       if (strategy.idebug) println(s"[$getNowTime] timer.stop(randomForests training)")
       println(s"[$getNowTime] [Layer Summary] layer [$layer_id] - " +
@@ -763,7 +739,6 @@ private[spark] object GCForestImpl extends Logging {
         println(s"$timer")
       }
     }
-
     scanFeature_train.unpersist()
     scanFeature_test.unpersist()
 
@@ -774,7 +749,6 @@ private[spark] object GCForestImpl extends Logging {
     println(s"[$getNowTime] Internal timing for GCForestImpl:")
     println(s"$timer")
     // scalastyle:on println
-    new GCForestClassificationModel(mgsModels ++ mgsModels_test,
-      Array[Array[RandomForestClassificationModel]](), numClasses)
+    new GCForestClassificationModel(erfModels.toArray, numClasses)
   }
 }

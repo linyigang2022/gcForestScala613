@@ -98,6 +98,7 @@ object GCForestSequence {
         .setCrf_featureSubsetStrategy(param.crf_featureSubsetStrategy)
         .setEarlyStoppingRounds(param.earlyStoppingRounds)
         .setIDebug(param.idebug)
+        .setSubRFNum(param.subRFNum)
 
       val model = gcForest.train(train, test)
       model

@@ -136,6 +136,11 @@ private[ml] trait GCForestParams extends HasSeed {
   final val idebug: Param[Boolean] = new Param[Boolean](this, "idebug", "if debug or not")
   setDefault(idebug -> false)
 
+  final val subRFNum: Param[Int] = new Param[Int](this, "subRFNum", "num of sub random forest")
+  setDefault(subRFNum -> 2)
+
+  def setSubRFNum(value: Int): this.type = set(subRFNum, value)
+
   def setIDebug(value: Boolean): this.type = set(idebug, value)
 
   def setSeed(value: Long): this.type = set(seed, value)

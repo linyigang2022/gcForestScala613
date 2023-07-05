@@ -31,13 +31,15 @@ case class GCForestStrategy(
                             var scanCol: String = "scan_id",
                             var forestIdCol: String = "forestNum",
                             var idebug: Boolean = false,
+                            var subRFNum: Int = 2,
 
                             var instanceCol: String = "instance",
                             var rawPredictionCol: String = "rawPrediction",
                             var probabilityCol: String = "probability",
                             var predictionCol: String = "prediction",
                             var featuresCol: String = "features",
-                            var labelCol: String = "label")
+                            var labelCol: String = "label"
+                            )
 extends Serializable {
 
 }
