@@ -120,13 +120,13 @@ class GCForestClassifier(override val uid: String)
 
 private[ml] class GCForestClassificationModel(
                                                override val uid: String,
-                                               private val cascadeForest: Array[Array[RandomForestClassificationModel]],
+                                               private val cascadeForest: Array[Array[RandomForestClassificationModel613]],
                                                override val numClasses: Int)
   extends ProbabilisticClassificationModel[Vector, GCForestClassificationModel]
     with GCForestParams with MLWritable with Serializable {
 
   def this(
-           cascadeForest: Array[Array[RandomForestClassificationModel]],
+           cascadeForest: Array[Array[RandomForestClassificationModel613]],
            numClasses: Int) =
     this(Identifiable.randomUID("gcfc"), cascadeForest, numClasses)
 
@@ -233,7 +233,7 @@ object GCForestClassificationModel extends MLReadable[GCForestClassificationMode
         val modelsPath = new Path(cascadePath, level.toString).toString
         Range(0, 4).map { index =>
           val modelPath = new Path(modelsPath, index.toString).toString
-          RandomForestClassificationModel.load(modelPath)
+          RandomForestClassificationModel613.load(modelPath)
         }.toArray
       }.toArray
 

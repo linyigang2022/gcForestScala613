@@ -1,6 +1,6 @@
 package org.apache.spark.ml.tmp
 
-import org.apache.spark.ml.classification.{GCForestClassificationModel, GCForestClassifier, RandomForestClassifier}
+import org.apache.spark.ml.classification.{GCForestClassificationModel, GCForestClassifier, RandomForestClassifier613 => RandomForestClassifier}
 import org.apache.spark.ml.datasets.UCI_adult
 import org.apache.spark.ml.examples.UCI_adult.Utils
 import org.apache.spark.ml.examples.UCI_adult.Utils.{TrainParams, trainParser}

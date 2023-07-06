@@ -14,11 +14,11 @@ import org.apache.spark.sql.Dataset
 
 
 class CompletelyRandomForestClassifier(override val uid: String)
-  extends RandomForestClassifier {
+  extends RandomForestClassifier613 {
 
   def this() = this(Identifiable.randomUID("crfc"))
 
-  override protected def train(dataset: Dataset[_]): RandomForestClassificationModel = instrumented { instr =>
+  override protected def train(dataset: Dataset[_]): RandomForestClassificationModel613 = instrumented { instr =>
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
     val numClasses: Int = getNumClasses(dataset)
@@ -44,7 +44,7 @@ class CompletelyRandomForestClassifier(override val uid: String)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     val numFeatures = oldDataset.first().features.size
-    val m = new RandomForestClassificationModel(trees, numFeatures, numClasses)
+    val m = new RandomForestClassificationModel613(trees, numFeatures, numClasses)
 //    instr.logSuccess(m)
     m
   }

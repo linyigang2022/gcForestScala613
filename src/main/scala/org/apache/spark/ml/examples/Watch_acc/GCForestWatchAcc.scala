@@ -3,7 +3,7 @@
  */
 package org.apache.spark.ml.examples.Watch_acc
 
-import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier}
+import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier613 => RandomForestClassifier}
 import org.apache.spark.ml.datasets.{UCI_adult, WatchAcc}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator

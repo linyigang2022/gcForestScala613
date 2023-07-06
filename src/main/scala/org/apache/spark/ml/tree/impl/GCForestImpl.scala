@@ -94,13 +94,13 @@ private[spark] object GCForestImpl extends Logging {
 
   def cvClassVectorGenerator(
                               training: Dataset[_],
-                              rfc: RandomForestClassifier,
+                              rfc: RandomForestClassifier613,
                               numFolds: Int,
                               seed: Long,
                               strategy: GCForestStrategy,
                               isScan: Boolean = false,
                               message: String = ""):
-  (DataFrame, Metric, RandomForestClassificationModel) = {
+  (DataFrame, Metric, RandomForestClassificationModel613) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
     var out_train: DataFrame = null // closure need
@@ -136,9 +136,9 @@ private[spark] object GCForestImpl extends Logging {
   def genRFClassifier(rfType: String,
                       strategy: GCForestStrategy,
                       isScan: Boolean,
-                      num: Int): RandomForestClassifier = {
+                      num: Int): RandomForestClassifier613 = {
     val rf = rfType match {
-      case "rfc" => new RandomForestClassifier().setFeatureSubsetStrategy(strategy.featureSubsetStrategy)
+      case "rfc" => new RandomForestClassifier613().setFeatureSubsetStrategy(strategy.featureSubsetStrategy)
       case "crfc" => new CompletelyRandomForestClassifier().setFeatureSubsetStrategy(strategy.crf_featureSubsetStrategy)
     }
 
@@ -166,7 +166,7 @@ private[spark] object GCForestImpl extends Logging {
                                             isScan: Boolean,
                                             layer_id: Int,
                                             estimator_id: Int):
-  (DataFrame, DataFrame, Metric, Metric, Array[RandomForestClassificationModel]) = {
+  (DataFrame, DataFrame, Metric, Metric, Array[RandomForestClassificationModel613]) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
     var out_train: DataFrame = null // closure need
@@ -355,7 +355,7 @@ private[spark] object GCForestImpl extends Logging {
              input: Dataset[_],
              strategy: GCForestStrategy): GCForestClassificationModel = {
     val numClasses: Int = strategy.classNum
-    val erfModels = ArrayBuffer[Array[RandomForestClassificationModel]]()
+    val erfModels = ArrayBuffer[Array[RandomForestClassificationModel613]]()
     val n_train = input.count()
 
     val scanFeature_train = multi_grain_Scan(input, strategy)
@@ -388,7 +388,7 @@ private[spark] object GCForestImpl extends Logging {
           ++
           Range(4, 8).map(it =>
             genRFClassifier("crfc", strategy, isScan = false, num = rng.nextInt + it))
-        ).toArray[RandomForestClassifier]
+        ).toArray[RandomForestClassifier613]
       assert(randomForests.length == 8, "random Forests inValid!")
       // scanFeatures_*: (instanceId, label, features)
       val training = mergeFeatureAndPredict(scanFeature_train, lastPrediction, strategy)
@@ -492,7 +492,7 @@ private[spark] object GCForestImpl extends Logging {
     if (strategy.idebug) println(s"[$getNowTime] timer.start(total)")
     val numClasses: Int = strategy.classNum
     // TODO: better representation to model
-    val erfModels = ArrayBuffer[Array[RandomForestClassificationModel]]() // layer - (forest * fold)
+    val erfModels = ArrayBuffer[Array[RandomForestClassificationModel613]]() // layer - (forest * fold)
     val n_train = input.count()
     val n_test = validationInput.count()
 

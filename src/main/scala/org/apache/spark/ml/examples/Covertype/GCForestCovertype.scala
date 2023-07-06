@@ -3,7 +3,7 @@
  */
 package org.apache.spark.ml.examples.Covertype
 
-import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier}
+import org.apache.spark.ml.classification.{GCForestClassifier, RandomForestClassifier613 => RandomForestClassifier}
 import org.apache.spark.ml.datasets.{Covertype, UCI_adult}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
