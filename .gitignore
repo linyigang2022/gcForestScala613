@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 models/
 checkpoint/
+**.csv/
 .idea/
 !pom.xml
 !run.sh
