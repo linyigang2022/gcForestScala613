@@ -156,6 +156,9 @@ override def predictRaw(features: Vector): Vector = {
 
   new DenseVector(avgPredict)
 }
+
+  override def predictProbability(features: Vector): Vector = super.predictProbability(features)
+
   override protected def raw2probabilityInPlace(rawPrediction: Vector): Vector = {
     rawPrediction match {
       case dv: DenseVector =>
