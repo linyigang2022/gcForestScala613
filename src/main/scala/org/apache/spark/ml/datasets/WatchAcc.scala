@@ -57,17 +57,20 @@ class WatchAcc extends BaseDatasets {
       .zipWithIndex.map { case (row, idx) =>
       val line = row.getAs[String]("value")
       val splits = line.split(",")
-      require(splits.length == 6, s"row $idx: $line has no 54 features, length: ${splits.length}")
-      val label = splits(0).toDouble-1600
-      val data = splits.drop(1).zipWithIndex.map { case (feature, indx) =>
+      require(splits.length == 6, s"row $idx: $line has no 6 features, length: ${splits.length}")
+      val label = splits(1).toDouble - 1
+      val data = (splits(0) +: splits.drop(2)).zipWithIndex.map { case (feature, indx) =>
         f_parsers_array(indx).get_data(feature.trim)
       }.reduce((l, r) => l ++ r)
 
-//      println(s"before require, data:${data.mkString("_")}")
+
       require(data.length == total_dims,
         "Total dims %d not equal to data.length %d".format(total_dims, data.length))
       Row.fromSeq(Seq[Any](label, data, idx))
     }
+    println(s"处理后的数据")//${dataRDD.first().mkString("_")}")
+    dataRDD. take(5).foreach(x=>
+      println(x(1).asInstanceOf[Array[Double]].mkString(",")))
 
     val repartitioned = if (repar > 0) dataRDD.repartition(repar) else dataRDD
     val schema = new StructType()

@@ -59,7 +59,7 @@ class Covertype extends BaseDatasets {
       val splits = line.split(",")
 //      println(s"splits.length：${splits.length}")
       require(splits.length == 55, s"row $idx: $line has no 54 features, length: ${splits.length}")
-      val label = splits(54).toDouble
+      val label = splits(54).toDouble-1
       val data = splits.dropRight(1).zipWithIndex.map { case (feature, indx) =>
         f_parsers_array(indx).get_data(feature.trim)
       }.reduce((l, r) => l ++ r)

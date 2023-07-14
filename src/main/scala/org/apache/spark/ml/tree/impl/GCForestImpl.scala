@@ -166,70 +166,41 @@ private[spark] object GCForestImpl extends Logging {
                                             isScan: Boolean,
                                             layer_id: Int,
                                             estimator_id: Int):
-  (DataFrame, DataFrame, Metric, Metric, Array[RandomForestClassificationModel613]) = {
+  (DataFrame, DataFrame, Metric, Metric, RandomForestClassificationModel613) = {
     val schema = training.schema
     val sparkSession = training.sparkSession
-    var out_train: DataFrame = null // closure need
-    var out_test: DataFrame = null // closure need
     // scalastyle:off println
     require(schema.equals(testing.schema))
     val message = s"layer [$layer_id] - estimator [$estimator_id]"
     // cross-validation for k classes distribution features
     var train_metric = new Accuracy(0, 0)
-    timer.start("Kfold split and fit")
+    var test_metric = new Accuracy(0, 0)
+    timer.start("Kfold cancel, fit sub random forest")
     if (strategy.idebug) println(s"[$getNowTime] timer.start(Kfold split and fit)")
-    val splits = MLUtils.kFold(training.toDF().rdd, numFolds, seed * System.currentTimeMillis())
-    val models = splits.zipWithIndex.map {
-      case ((t, v), splitIndex) =>
-        val rfc = genRFClassifier(rfc_class, strategy, isScan = isScan, num = splitIndex + 1)
-        timer.start(s"cvGenerator - cv - $splitIndex")
-        if (strategy.idebug) {
-          println(s"[$getNowTime] timer.start(cvGenerator - cv - $splitIndex)")
-        }
-        val trainingDataset = sparkSession.createDataFrame(t, schema)
-        val validationDataset = sparkSession.createDataFrame(v, schema)
-        val model = rfc.fit(trainingDataset)
-        timer.stop(s"cvGenerator - cv - $splitIndex")
-        println("cvGenerator")
-        if (strategy.idebug) {
-          println(s"[$getNowTime] timer.stop(cvGenerator - cv - $splitIndex)")
-        }
+    val rfc = genRFClassifier(rfc_class, strategy, isScan = isScan, num = 1)
+    val model = rfc.fit(training)
+    println("Kfold cancel, fit sub random forest line185")
 
-        // rawPrediction == probabilityCol
-        val val_result = model.transform(validationDataset)
-          .drop(strategy.featuresCol)
-          .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol)
-        //        拼接feature，将结果的概率转化为feature
-        out_train = if (out_train == null) val_result else out_train.union(val_result)
+    // rawPrediction == probabilityCol
+    val out_train = model.transform(training)
+      .drop(strategy.featuresCol)
+      .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol)
 
-        if (!isScan) {
-          val val_acc = gcForestEvaluator.evaluatePartition(val_result)
-          train_metric += val_acc
-          println(s"[$getNowTime] $message ${numFolds}_folds.train_$splitIndex = $val_acc")
-        }
+    train_metric += gcForestEvaluator.evaluatePartition(out_train)
+    println(s"[$getNowTime] 取消交叉验证，现在的训练准确率为：$train_metric")
 
-        //        mark lyg 修改过
-        val test_result = model.transform(testing)
-          .drop(strategy.featuresCol)
-          .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol + s"$splitIndex")
-          .select(strategy.instanceCol, strategy.labelCol, strategy.featuresCol + s"$splitIndex")
-        out_test = if (out_test == null) test_result
-        else out_test.join(test_result, Seq(strategy.instanceCol, strategy.labelCol))
-        val path = s"${strategy.modelPath}/layer-$layer_id-" +
-          s"est-$estimator_id-$numFolds-folds-$splitIndex-$rfc_class"
-        //        model.write.overwrite().save(path)
-        model
-    }
-    timer.stop("Kfold split and fit")
+    //        mark lyg 修改过
+    val out_test = model.transform(testing)
+      .drop(strategy.featuresCol)
+      .withColumnRenamed(strategy.probabilityCol, strategy.featuresCol)
+
+    timer.stop("Kfold cancel, fit sub random forest")
     if (strategy.idebug) println(s"[$getNowTime] timer.stop(Kfold split and fit)")
-    out_test = out_test.withColumn(strategy.featuresCol,
-      UDF.mergeVectorForKfold(3)(
-        Range(0, numFolds).map(k => col(strategy.featuresCol + s"$k")): _*))
-      .select(strategy.instanceCol, strategy.labelCol, strategy.featuresCol)
-    val test_metric = if (!isScan) gcForestEvaluator.evaluatePartition(out_test)
-    else new Accuracy(0, 0)
+
+    test_metric += gcForestEvaluator.evaluatePartition(out_test)
+    println(s"[$getNowTime] 取消交叉验证，现在的测试准确率为：$test_metric")
     // scalastyle:on println
-    (out_train, out_test, train_metric, test_metric, models)
+    (out_train, out_test, train_metric, test_metric, model)
   }
 
   /**
@@ -445,6 +416,7 @@ private[spark] object GCForestImpl extends Logging {
           Row.fromSeq(Array[Any](instanceId, features))
         }
       }
+
       // predictRDDs.foreach(r => r.persist(StorageLevel.MEMORY_ONLY_SER))
       println(s"[$getNowTime] Get prediction RDD finished! Layer $layer_id training finished!")
 
@@ -495,7 +467,6 @@ private[spark] object GCForestImpl extends Logging {
     val erfModels = ArrayBuffer[Array[RandomForestClassificationModel613]]() // layer - (forest * fold)
     val n_train = input.count()
     val n_test = validationInput.count()
-
 
 
     timer.start("multi_grain_Scan for Train and Test")
@@ -579,13 +550,27 @@ private[spark] object GCForestImpl extends Logging {
       ensemblePredict = null
       ensemblePredict_test = null
 
+
       layer_train_metric.reset()
       layer_test_metric.reset()
       // lyg
-      val weight = 1.0 / (strategy.rfNum + strategy.crfNum)
-      val weightArray = Array.fill[Double](strategy.rfNum + strategy.crfNum)(weight)
-      val sampleTraining = training.randomSplit(weightArray)
-      val sampleTesting = testing.randomSplit(weightArray)
+
+      val n = training.count().toDouble
+      val frac = 1.0 / (strategy.rfNum + strategy.crfNum)
+      val sampleTraining = Array.ofDim[Dataset[Row]](strategy.rfNum + strategy.crfNum)
+      val sampleTesting = Array.ofDim[Dataset[Row]](strategy.rfNum + strategy.crfNum)
+      for (i <- 0 until strategy.rfNum + strategy.crfNum) {
+        sampleTraining(i) = training.sample(true, frac)
+        sampleTesting(i) = testing.sample(true, frac)
+      }
+
+      //      val weight = 1.0 / (strategy.rfNum + strategy.crfNum)
+      //      val weightArray = Array.fill[Double](strategy.rfNum + strategy.crfNum)(weight)
+      //      val sampleTraining = training.randomSplit(weightArray)
+      //      val sampleTesting = testing.randomSplit(weightArray)
+      println(s"gcforest子森林采用有放回的抽样，原本大小为${training.count()},抽样后的大小为${sampleTraining(0).count()}")
+
+
       println(s"子森林数量：${strategy.rfNum + strategy.crfNum}")
       println(s"strategy.subRFNum ：${strategy.subRFNum}")
       sampleTraining.foreach { training =>
@@ -600,13 +585,13 @@ private[spark] object GCForestImpl extends Logging {
       if (strategy.idebug) println(s"[$getNowTime] timer.start(randomForests training)")
 
 
-      erfModels ++= randomForests.zipWithIndex.map { case (rf_type, it) =>
-        println(s"it=${it}")
+      erfModels += randomForests.zipWithIndex.map { case (rf_type, it) =>
+        println(s"子森林标号：${it}")
         timer.start("cvClassVectorGeneration")
         if (strategy.idebug) println(s"[$getNowTime] timer.start(cvClassVectorGeneration)")
 
         val transformed = cvClassVectorGeneratorWithValidation(
-          sampleTesting(it), sampleTesting(it), rf_type, strategy.numFolds, strategy.seed, timer, strategy,
+          sampleTraining(it), sampleTesting(it), rf_type, strategy.numFolds, strategy.seed, timer, strategy,
           isScan = false, layer_id, it)
 
         timer.stop("cvClassVectorGeneration")
@@ -625,8 +610,7 @@ private[spark] object GCForestImpl extends Logging {
         ensemblePredict =
           if (ensemblePredict == null) predict else ensemblePredict.union(predict)
         ensemblePredict_test =
-          if (ensemblePredict_test == null) predict_test else ensemblePredict_test
-            .union(predict_test)
+          if (ensemblePredict_test == null) predict_test else ensemblePredict_test.union(predict_test)
         timer.stop("add forestIdCol and Union")
         if (strategy.idebug) println(s"[$getNowTime] timer.stop(add forestIdCol and Union)")
 
@@ -642,7 +626,7 @@ private[spark] object GCForestImpl extends Logging {
       }
       timer.stop("randomForests training")
 
-      sampleTraining.foreach{training=>
+      sampleTraining.foreach { training =>
         training.unpersist(blocking = true)
       }
       sampleTesting.foreach { testing =>
@@ -677,8 +661,18 @@ private[spark] object GCForestImpl extends Logging {
               .flatMap(_.getAs[Vector](strategy.featuresCol).toArray))
             Row.fromSeq(Array[Any](instanceId, features))
           }
+          val schema = new StructType()
+            .add(StructField(strategy.instanceCol, LongType))
+            .add(StructField(strategy.featuresCol, new VectorUDT))
+          sparkSession.createDataFrame(predictRDD, schema).printSchema()
           predictRDD
         }
+//      val predictRDDDim = predictRDDs(0).first().mkString.split(",").length
+//      println(s"predictRDD train 第一行：${predictRDDs(0).first().mkString}")
+//      println(s"predictRDD test 第一行：${predictRDDs(1).first().mkString}")
+//      println(s"[$getNowTime] gcforestImpl layer train finish, predict rdd feature dim = ($predictRDDDim)")
+
+
       timer.stop("flatten prediction")
       if (strategy.idebug) println(s"[$getNowTime] timer.stop(flatten prediction)")
       println(s"[$getNowTime] Get prediction RDD finished! Layer $layer_id training finished!")
@@ -748,7 +742,7 @@ private[spark] object GCForestImpl extends Logging {
     if (strategy.idebug) println(s"[$getNowTime] timer.stop(total)")
 
     println(s"[$getNowTime] Internal timing for GCForestImpl:")
-    println(s"$timer")
+    //    println(s"$timer")
     // scalastyle:on println
     new GCForestClassificationModel(erfModels.toArray, numClasses)
   }

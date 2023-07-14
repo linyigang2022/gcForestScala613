@@ -160,9 +160,9 @@ private[spark] object CompletelyRandomForestImpl extends Logging {
     logWarning("nodeIDCache estimates Size: %.1f M".
       format(SizeEstimator.estimate(nodeIdCache) / (1024 * 1024.0)))
     // scalastyle:off println
-    println("Internal timing for DecisionTree:")
-    println(s"$timer")
-    println(s"Total nodes: $totalNodes")
+//    println("Internal timing for DecisionTree:")
+//    println(s"$timer")
+//    println(s"Total nodes: $totalNodes")
     // scalastyle:on println
 
     // Delete any remaining checkpoints used for node Id cache.
@@ -541,14 +541,14 @@ private[spark] object CompletelyRandomForestImpl extends Logging {
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
         val (split: Split, stats: ImpurityStats) =
           nodeToRandomSplits(aggNodeIndex)
-        logDebug("best split = " + split)
+//        logDebug("best split = " + split)
 
         // Extract info for this node.  Create children if not leaf.
         val isLeaf = (stats.gain < metadata.minInfoGain) ||
           (LearningNode.indexToLevel(nodeIndex) == metadata.maxDepth)
         node.isLeaf = isLeaf
         node.stats = stats
-        logDebug("Node = " + node)
+//        logDebug("Node = " + node)
 
         if (!isLeaf) {
           node.split = Some(split)
@@ -575,10 +575,10 @@ private[spark] object CompletelyRandomForestImpl extends Logging {
             nodeStack.push((treeIndex, node.rightChild.get))
           }
 
-          logDebug("leftChildIndex = " + node.leftChild.get.id +
-            ", impurity = " + stats.leftImpurity)
-          logDebug("rightChildIndex = " + node.rightChild.get.id +
-            ", impurity = " + stats.rightImpurity)
+//          logDebug("leftChildIndex = " + node.leftChild.get.id +
+//            ", impurity = " + stats.leftImpurity)
+//          logDebug("rightChildIndex = " + node.rightChild.get.id +
+//            ", impurity = " + stats.rightImpurity)
         }
       }
     }

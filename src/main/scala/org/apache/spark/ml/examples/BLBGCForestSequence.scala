@@ -20,7 +20,7 @@ object BLBGCForestSequence {
     val spark = SparkSession
       .builder()
       .appName(this.getClass.getSimpleName)
-      .master("local[*]")
+//      .master("local[*]")
       .getOrCreate()
 
     val parallelism = Engine.getParallelism(spark.sparkContext)
@@ -101,6 +101,8 @@ object BLBGCForestSequence {
       .setEarlyStoppingRounds(param.earlyStoppingRounds)
       .setIDebug(param.idebug)
       .setSubRFNum(param.subRFNum)
+      .setLambda(param.lambda)
+      .setNumClasses(param.classNum)
 
     val model = blbGCForest.train(train, test)
 

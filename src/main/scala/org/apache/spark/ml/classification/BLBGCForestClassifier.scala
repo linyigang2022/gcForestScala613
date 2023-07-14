@@ -49,6 +49,8 @@ class BLBGCForestClassifier(override val uid: String)
 
   override def setSubRFNum(value: Int): BLBGCForestClassifier.this.type = set(subRFNum, value)
 
+  override def setLambda(value: Double): BLBGCForestClassifier.this.type = set(lambda, value)
+
   override def setMaxDepth(value: Int): this.type = set(MaxDepth, value)
 
   override def setMaxBins(value: Int): BLBGCForestClassifier.this.type = set(MaxBins, value)
@@ -83,7 +85,7 @@ class BLBGCForestClassifier(override val uid: String)
       $(numFolds), $(earlyStoppingRounds),
       $(earlyStopByTest), $(dataStyle), $(seed), $(cacheNodeId),
       $(windowCol), $(scanCol), $(forestIdCol), $(idebug),
-      $(subRFNum))
+      $(subRFNum), $(lambda))
   }
 
   def getDefaultStrategy: GCForestStrategy = {

@@ -11,15 +11,19 @@ object Utils {
                           //              trainFile: String = "./data/uci_adult/adult.data",
                           //              testFile: String = "./data/uci_adult/adult_1000.test",
                           //              featuresFile: String = "./data/uci_adult/features",
-                          trainFile: String = "C:/dataset/uci_adult/adult.data",
-                          testFile: String = "C:/dataset/uci_adult/adult.test",
-                          featuresFile: String = "C:/dataset/uci_adult/features",
+//                          trainFile: String = "C:/dataset/uci_adult/adult.data",
+//                          testFile: String = "C:/dataset/uci_adult/adult.test",
+//                          featuresFile: String = "C:/dataset/uci_adult/features",
+                          trainFile: String = "C:/dataset/watch_acc/watch_acc.data",
+                          testFile: String = "C:/dataset/watch_acc/watch_acc.test",
+                          featuresFile: String = "C:/dataset/watch_acc/features",
+                          model: String = "./models/uci_adult",
 //                          trainFile: String = "C:/dataset/covertype/covtype.data",
 //                          testFile: String = "C:/dataset/covertype/covtype.test",
 //                          featuresFile: String = "C:/dataset/covertype/features",
-                          model: String = "./models/uci_adult",
+//                          model: String = "./models/uci_adult",
                           checkpointDir: String = "./checkpoint",
-                          classNum: Int = 2,
+                          classNum: Int = 18,
                           multiScanWindow: Array[Int] = Array(),
                           rfNum: Int = 1,
                           crfNum: Int = 1,
@@ -54,8 +58,11 @@ object Utils {
                           featuresCol: String = "features",
                           labelCol: String = "label",
                           idebug: Boolean = false,
-                          dataset: String = "uci_adult",
-                          subRFNum: Int = 3
+//                          dataset: String = "uci_adult",
+//                          dataset: String = "covertype",
+                          dataset: String = "watch_acc",
+                          subRFNum: Int = 2,
+                          lambda: Double = 0.75
                         )
 
   val trainParser = new OptionParser[TrainParams]("GCForest On Spark - UCI ADULT Example") {
@@ -158,6 +165,9 @@ object Utils {
     opt[Int]("subRFNum")
       .text("num of sub random forest, default: 2")
       .action((x, c) => c.copy(subRFNum = x))
+    opt[Double]("lambda")
+      .text("sample level of random forest, default: 0.7")
+      .action((x, c) => c.copy(lambda = x))
     // other parameters do not need to change
 
   }

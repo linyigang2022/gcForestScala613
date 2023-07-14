@@ -4,6 +4,7 @@
 
 package org.apache.spark.ml.tree
 
+import org.apache.spark.ml.classification.BLBGCForestClassifier
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.param.shared.HasSeed
 
@@ -138,6 +139,11 @@ private[ml] trait GCForestParams extends HasSeed {
 
   final val subRFNum: Param[Int] = new Param[Int](this, "subRFNum", "num of sub random forest")
   setDefault(subRFNum -> 2)
+
+  final val lambda: Param[Double] = new Param[Double](this, "lambda", "sample level of random forest")
+  setDefault(lambda -> 0.7)
+
+  def setLambda(value: Double): this.type = set(lambda, value)
 
   def setSubRFNum(value: Int): this.type = set(subRFNum, value)
 

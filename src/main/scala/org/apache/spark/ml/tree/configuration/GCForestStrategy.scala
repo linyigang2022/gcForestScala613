@@ -32,6 +32,7 @@ case class GCForestStrategy(
                             var forestIdCol: String = "forestNum",
                             var idebug: Boolean = false,
                             var subRFNum: Int = 2,
+                            var lambda: Double = 0.7,
 
                             var instanceCol: String = "instance",
                             var rawPredictionCol: String = "rawPrediction",
